@@ -14,7 +14,14 @@ const eslintConfig = [
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/consistent-type-imports": [
         "error",
-        { prefer: "type-imports", fixStyle: "inline-type-imports" },
+        {
+          prefer: "type-imports",
+          fixStyle: "inline-type-imports",
+          // The seed deletes the database file before the repo layer loads it,
+          // so it can only reach that module through a deferred import, and
+          // `typeof import(...)` is how you name its type.
+          disallowTypeAnnotations: false,
+        },
       ],
     },
   },

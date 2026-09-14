@@ -1,39 +1,10 @@
 import type { Owner, Source, ValueType } from "../lib/db/enums";
 
-export type StageSpec = {
-  name: string;
-  staleAfterDays: number | null;
-  isWon?: boolean;
-  isLost?: boolean;
-  isSequence?: boolean;
-};
-
-export const OUTBOUND_STAGES: StageSpec[] = [
-  { name: "New Lead", staleAfterDays: 3 },
-  { name: "Researched", staleAfterDays: 4 },
-  // Sending the first message is day one of the cadence, so contacting and
-  // following up are one stage with a sub-board behind it.
-  {
-    name: "In Sequence",
-       staleAfterDays: 30,
-    isSequence: true,
-  },
-  { name: "Replied", staleAfterDays: 3 },
-  { name: "Call Booked", staleAfterDays: 7 },
-  // The call was taken and we are working to close it.
-  { name: "Closing", staleAfterDays: 5 },
-  { name: "Won", staleAfterDays: null, isWon: true },
-  { name: "Lost", staleAfterDays: null, isLost: true },
-];
-
-export const DELIVERY_STAGES: StageSpec[] = [
-  // Onboarding is exactly where a signed client goes quiet, so it has the
-  // tightest clock on either board.
-  { name: "Onboarding", staleAfterDays: 3 },
-  { name: "Building", staleAfterDays: 7 },
-  { name: "Live", staleAfterDays: 30 },
-  { name: "Churned", staleAfterDays: null, isLost: true },
-];
+export {
+  DELIVERY_STAGES,
+  OUTBOUND_STAGES,
+  type StageSpec,
+} from "../lib/pipeline-defaults";
 
 /** Index into the outbound funnel, ignoring the Lost stage. */
 export const FUNNEL = {

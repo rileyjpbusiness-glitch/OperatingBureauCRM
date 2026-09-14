@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "check": "tsx scripts/check.ts",
     "seed": "tsx scripts/seed.ts",
+    "bootstrap": "tsx scripts/bootstrap.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:inspect": "tsx scripts/inspect.ts",

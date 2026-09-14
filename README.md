@@ -2,8 +2,10 @@
 
 A local-first CRM for Operating Bureau's cold outbound (Instagram DMs + cold
 email) into high-ticket coaching and info-product clients. Two users, Riley and
-Kavi. Runs on localhost, stores everything in a local SQLite file. No auth, no
-cloud, no billing, no outbound network calls.
+Kavi. Stores everything in one SQLite file. No billing, no third-party calls,
+and no authentication code in the app itself. It runs on localhost during
+development and, deployed, behind Cloudflare Access on a host with no publicly
+reachable origin. See `docs/DEPLOY.md`.
 
 ## Running it
 
@@ -18,6 +20,7 @@ Other scripts:
 | --- | --- |
 | `npm run dev` | Starts the dev server on port 3000 |
 | `npm run seed` | Deletes the database, re-migrates, and reseeds it |
+| `npm run bootstrap` | Creates the two pipelines and their stages in an empty database, and nothing else |
 | `npm run build` | Production build (typechecks and lints as part of the build) |
 | `npm run start` | Serves the production build |
 | `npm run typecheck` | `tsc --noEmit` |
@@ -62,6 +65,33 @@ file.
 - `.env` is committed and contains one line, `NEXT_TELEMETRY_DISABLED=1`. The
   app makes no external requests; this turns off Next.js's own build telemetry
   too. You can also run `npx next telemetry disable` once per machine.
+
+## Deploying
+
+`docs/DEPLOY.md` is the runbook: eight numbered steps, each marked with whether
+it needs a Cloudflare login or a Fly login. The shape of it:
+
+The app listens on `127.0.0.1` inside its container and nothing else. There is
+no public Fly port and no `*.fly.dev` hostname, which is why `fly.toml` has no
+`[http_service]` and no `[[services]]` block. `fly ips list` printing nothing is
+the check that this held.
+
+Traffic reaches it through a Cloudflare Tunnel. `cloudflared` runs as a sidecar
+in the same container, started by `docker/entrypoint.sh`, and dials out to
+Cloudflare; the connection is outbound only, so there is no inbound address to
+find. `privatecrm.operatingbureau.com` resolves to the tunnel, and a Cloudflare
+Access policy in front of it allows two email addresses by explicit allowlist,
+authenticating with one-time email codes and a thirty day session.
+
+That is the whole authentication story. The application has no login screen, no
+users table and no session handling, because an origin that only Cloudflare can
+reach does not need them, and a second implementation of the same control is a
+second thing to get wrong.
+
+`scripts/bootstrap.ts` runs on every boot. On a fresh volume it creates the two
+pipelines and their stages so the boards render instead of 404ing; on a volume
+that already has them it prints what it found and exits. It never writes
+contacts or deals — the production database starts empty of leads on purpose.
 
 ## Still to build
 

@@ -1,0 +1,31 @@
+# Single machine, single volume: SQLite has one writer, so this app must never
+# run two instances.
+app = "bureau-crm"
+primary_region = "ewr"
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  BUREAU_DB_PATH = "/data/bureau.db"
+
+# There is deliberately no [http_service] and no [[services]] block.
+#
+# Publishing a port would give this app a reachable *.fly.dev origin, and anyone
+# who found that hostname would walk straight past Cloudflare Access. The only
+# way in is the tunnel opened from inside the machine by cloudflared.
+
+[mounts]
+  source = "bureau_data"
+  destination = "/data"
+
+[deploy]
+  # One machine holds the volume, so it has to stop before its replacement
+  # starts. That means a few seconds of downtime per deploy, which is the right
+  # trade for never having two writers on one SQLite file.
+  strategy = "immediate"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

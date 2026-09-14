@@ -179,6 +179,11 @@ column where work is piling up glows down its left side. You see the bottleneck
 as texture before you read a number, and it costs no screen space. Moving a card
 forward fades its edge back to nothing over 400ms.
 
+**The chart is monochrome until you touch it.** One series, so the heading names
+it and there is no legend. Bars are neutral and only the one under the cursor
+takes colour: amber means "needs attention" everywhere else in this interface,
+and thirty amber bars would spend that meaning on decoration.
+
 **The sequence rule.** The sub-board's columns sit on a single hairline with a
 tick under each, like a measuring rule, so nine columns read as one cadence
 rather than nine boxes. Ticks with work due today are drawn warm. The rule

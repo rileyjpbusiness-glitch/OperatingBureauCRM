@@ -18,3 +18,4 @@ export * from "./metrics";
 export * from "./board";
 export * from "./dashboard";
 export * from "./reset";
+export * from "./kpi";

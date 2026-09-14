@@ -202,3 +202,29 @@ export function atZonedTime(
   const parts = partsAt(instant);
   return instantOf(parts.year, parts.month, parts.day, hour, minute, second);
 }
+
+/** Start of the month containing `instant`, `back` months earlier. */
+export function startOfMonthsAgo(instant: Date, back: number): Date {
+  const parts = partsAt(instant);
+  // Date.UTC rolls a negative month back into the previous year for us.
+  return instantOf(parts.year, parts.month - back, 1);
+}
+
+const MONTH_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: TIME_ZONE,
+  month: "short",
+});
+
+const DAY_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: TIME_ZONE,
+  month: "short",
+  day: "numeric",
+});
+
+export function formatMonthLabel(instant: Date): string {
+  return MONTH_FORMAT.format(instant);
+}
+
+export function formatDayLabel(instant: Date): string {
+  return DAY_FORMAT.format(instant);
+}

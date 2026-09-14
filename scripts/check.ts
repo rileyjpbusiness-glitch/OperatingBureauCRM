@@ -330,6 +330,32 @@ async function main() {
     (detail?.history ?? []).every((entry, i, list) =>
       i === 0 || list[i - 1]!.at.getTime() >= entry.at.getTime()));
 
+  // --- KPI dashboard ---
+  const kpi = await import("../lib/repo/kpi");
+  const meta = await import("../lib/kpi");
+
+  for (const period of meta.PERIODS) {
+    const board = await kpi.getKpiDashboard(period, new Date());
+    check(`${period}: every metric has a reading`,
+      meta.KPI_METRICS.every((m) => board.readings[m] !== undefined));
+    check(`${period}: the chart has buckets`, board.series.length > 0);
+    check(`${period}: buckets run oldest to newest`,
+      board.series.every((b, i, list) =>
+        i === 0 || list[i - 1]!.start.getTime() < b.start.getTime()));
+    check(`${period}: buckets do not overlap`,
+      board.series.every((b, i, list) =>
+        i === 0 || list[i - 1]!.end.getTime() < b.start.getTime()));
+    check(`${period}: conversion is a ratio, not a percentage`,
+      board.readings.conversion.current >= 0 &&
+      board.readings.conversion.current <= 1);
+  }
+
+  // A metric with nothing before it reports no change rather than a fake 100%.
+  const daily = await kpi.getKpiDashboard("daily", new Date());
+  check("no previous figure means no percentage",
+    daily.readings.leads.previous !== 0 ||
+    daily.readings.leads.changeRatio === null);
+
   console.log(failures === 0 ? "\nall checks passed" : `\n${failures} FAILED`);
   if (failures > 0) process.exit(1);
 }

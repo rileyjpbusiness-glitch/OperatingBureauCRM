@@ -3,64 +3,48 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { SourceIcon } from "@/components/board/source-icon";
 import { OwnerChip } from "@/components/board/owner-chip";
+import { KpiTile } from "@/components/dashboard/kpi-tile";
+import { PerformanceChart } from "@/components/dashboard/performance-chart";
+import { PeriodToggle } from "@/components/dashboard/period-toggle";
+import { StageBreakdown } from "@/components/dashboard/stage-breakdown";
 import {
   contactName,
-  formatCents,
   formatDealValue,
   formatDueDate,
-  formatPercent,
 } from "@/lib/format";
-import { getDashboard, listPipelines, listStages } from "@/lib/repo";
+import {
+  KPI_METRICS,
+  PERIOD_COMPARISON,
+  getBoard,
+  getDashboard,
+  getKpiDashboard,
+  listPipelines,
+  listStages,
+} from "@/lib/repo";
+import { readDashboardState, type PageSearchParams } from "@/lib/search-params";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Bureau" };
 
-/**
- * One cell of the instrument strip. The cells are divided by hairlines rather
- * than boxed individually, so five readings read as one instrument.
- */
-function Cell({
-  label,
-  value,
-  title,
+export default async function DashboardPage({
+  searchParams,
 }: {
-  label: string;
-  value: string;
-  title?: string;
+  searchParams: Promise<PageSearchParams>;
 }) {
-  return (
-    <div
-      title={title}
-      className={cn(
-        "border-hairline px-4 py-4",
-        // Two across when narrow, five when there is room. The first cell of
-        // each row loses its divider; rows after the first gain a rule above.
-        "border-l [&:nth-child(odd)]:border-l-0 [&:nth-child(n+3)]:border-t",
-        "wide:border-l wide:[&:nth-child(odd)]:border-l wide:first:border-l-0 wide:[&:nth-child(n+3)]:border-t-0",
-      )}
-    >
-      <p className="text-text-3 font-mono text-micro font-medium tracking-label uppercase">
-        {label}
-      </p>
-      {/* The only serif in the application outside the wordmark. */}
-      <p className="text-text-1 mt-2 font-serif text-figure leading-none">
-        {value}
-      </p>
-    </div>
-  );
-}
+  const { period, metric } = readDashboardState(await searchParams);
 
-export default async function DashboardPage() {
-  const [pipelines, dashboard] = await Promise.all([
+  const [pipelines, kpi, attention, board] = await Promise.all([
     listPipelines(),
+    getKpiDashboard(period),
     getDashboard(),
+    getBoard("outbound"),
   ]);
 
   // Past a dozen this stops being a queue and becomes wallpaper. The header
   // still reports the real total.
-  const visible = dashboard.needsAttention.slice(0, 12);
+  const visible = attention.needsAttention.slice(0, 12);
 
   const stageNames = new Map(
     (await Promise.all(pipelines.map((pipeline) => listStages(pipeline.id))))
@@ -71,37 +55,41 @@ export default async function DashboardPage() {
   return (
     <AppShell pipelines={pipelines} activeSlug="">
       <div className="scrollbar-thin h-full overflow-y-auto">
-        <div className="border-hairline border-y">
-          <div className="grid grid-cols-2 wide:grid-cols-5">
-            <Cell
-              label="Touches logged this week"
-              value={String(dashboard.touchesThisWeek)}
-            />
-            <Cell label="Follow-ups due" value={String(dashboard.followUpsDue)} />
-            <Cell
-              label="Calls booked this week"
-              value={String(dashboard.callsBookedThisWeek)}
-            />
-            <Cell
-              label="Close rate (30d)"
-              value={
-                dashboard.closeRate.rate === null
-                  ? "—"
-                  : formatPercent(dashboard.closeRate.rate)
-              }
-              title={`${dashboard.closeRate.won} of ${dashboard.closeRate.reached} deals that reached the closing stage in the last 30 days were won`}
-            />
-            <Cell
-              label="Open pipeline MRR"
-              value={formatCents(dashboard.openPipelineMrrCents)}
-            />
-          </div>
+        <div className="border-hairline flex items-center justify-between gap-4 border-b px-4 py-3">
+          <h1 className="text-text-1 font-mono text-micro font-semibold tracking-label uppercase">
+            KPI Overview
+          </h1>
+          <PeriodToggle period={period} />
         </div>
 
-        <section className="p-4">
+        {/* Four readings as one instrument, and the chart's control. */}
+        <div className="border-hairline grid grid-cols-2 border-b wide:grid-cols-4">
+          {KPI_METRICS.map((candidate) => (
+            <KpiTile
+              key={candidate}
+              reading={kpi.readings[candidate]}
+              comparison={PERIOD_COMPARISON[period]}
+              selected={candidate === metric}
+            />
+          ))}
+        </div>
+
+        <div className="grid gap-3 p-4 wide:grid-cols-[1.6fr_1fr]">
+          <PerformanceChart series={kpi.series} metric={metric} />
+          <StageBreakdown
+            stages={kpi.stages}
+            openTotal={kpi.openTotal}
+            slug="outbound"
+            bottleneckStageId={board?.bottleneckStageId ?? null}
+          />
+        </div>
+
+        <section className="px-4 pb-4">
           <h2 className="text-text-3 mb-3 flex items-baseline gap-2 font-mono text-micro font-medium tracking-label uppercase">
             Needs attention
-            <span className="text-text-2">{dashboard.needsAttention.length}</span>
+            <span className="text-text-2">
+              {attention.needsAttention.length}
+            </span>
           </h2>
 
           {visible.length === 0 ? (

@@ -49,6 +49,23 @@ async function main() {
     pipelineId: second.id, name: "Onboarding", color: "#fff",
   });
 
+  // --- stale thresholds ---
+  check("an explicit null threshold is stored as null, not the default",
+    (await repo.getStage(wonStage.id))?.staleAfterDays === null,
+    (await repo.getStage(wonStage.id))?.staleAfterDays);
+  check("an omitted threshold falls back to the default",
+    deliveryStage.staleAfterDays === 7, deliveryStage.staleAfterDays);
+  const nulled = await repo.createStage({
+    pipelineId: second.id, name: "Never stale", color: "#fff", staleAfterDays: null,
+  });
+  check("createStage keeps a null threshold null", nulled.staleAfterDays === null, nulled.staleAfterDays);
+  check("updateStage can clear a threshold back to null",
+    (await repo.updateStage(deliveryStage.id, { staleAfterDays: null }))?.staleAfterDays === null);
+  check("updateStage leaves fields it was not given alone",
+    (await repo.updateStage(deliveryStage.id, { name: "Onboarding" }))?.staleAfterDays === null);
+  await repo.updateStage(deliveryStage.id, { staleAfterDays: 7 });
+  await repo.deleteStage(nulled.id);
+
   const { contact, deal } = await repo.createContactWithDeal({
     contact: { firstName: "Test", lastName: "Lead", source: "ig_dm", owner: "riley",
       instagramHandle: "https://instagram.com/TestLead/", email: "  TEST@Example.com " },
@@ -196,6 +213,13 @@ async function main() {
   const staleOnly = await repo.listDealCards({ pipelineId: pipeline.id, filters: { staleOnly: true } });
   check("stale-only filter returns just the aged deal",
     staleOnly.length === 1 && staleOnly[0]?.id === stale.id, staleOnly.map((x) => x.title));
+
+  // A deal sitting in Won for months is not a deal that needs chasing.
+  const wonCard = (await repo.listDealCards({ pipelineId: pipeline.id })).find((x) => x.id === deal.id);
+  check("a deal in a null-threshold stage never reads stale",
+    wonCard?.staleness === "fresh", wonCard?.staleness);
+  check("stale-only excludes deals in null-threshold stages",
+    !staleOnly.some((x) => x.id === deal.id));
 
   for (const suffix of ["", "-wal", "-shm"]) {
     const file = `${process.env.BUREAU_DB_PATH ?? ""}${suffix}`;

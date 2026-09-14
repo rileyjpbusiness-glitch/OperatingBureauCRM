@@ -58,7 +58,10 @@ export async function createStage(input: {
       name: input.name,
       position: index,
       color: input.color,
-      staleAfterDays: input.staleAfterDays ?? 7,
+      // `??` would collapse an explicit null into the default. Null means this
+      // stage never goes stale, which is the whole point of it on Won and Lost.
+      staleAfterDays:
+        input.staleAfterDays === undefined ? 7 : input.staleAfterDays,
       isWon: false,
       isLost: false,
     };
@@ -78,8 +81,12 @@ export async function updateStage(
     isLost?: boolean;
   },
 ): Promise<Stage | null> {
-  if (Object.keys(patch).length > 0) {
-    db.update(stages).set(patch).where(eq(stages.id, id)).run();
+  // Keys explicitly set to undefined mean "leave alone"; null is a real value.
+  const next = Object.fromEntries(
+    Object.entries(patch).filter(([, value]) => value !== undefined),
+  );
+  if (Object.keys(next).length > 0) {
+    db.update(stages).set(next).where(eq(stages.id, id)).run();
   }
   return getStage(id);
 }

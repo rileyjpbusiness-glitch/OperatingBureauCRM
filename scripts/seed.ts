@@ -205,12 +205,13 @@ async function main(): Promise<void> {
   const deliveryTargets = [0, 2, 3];
   for (const [index, card] of deliveryCards.entries()) {
     const target = deliveryTargets[index % deliveryTargets.length] ?? 1;
-    let at = daysBefore(now, randomInt(10, 30));
+    // Start far enough back that every planned step lands before today, so the
+    // shape of this board does not depend on what time the seed happens to run.
+    let at = daysBefore(now, 9 * target + randomInt(3, 9));
     for (let step = 1; step <= target; step += 1) {
       const stage = deliveryStages[step];
       if (!stage) break;
       at = new Date(at.getTime() + randomInt(2, 9) * MS_PER_DAY);
-      if (at.getTime() > now.getTime() - MS_PER_DAY) break;
       await repo.moveDeal({
         dealId: card.id,
         toStageId: stage.id,

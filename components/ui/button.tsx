@@ -5,21 +5,23 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "motion-base inline-flex items-center justify-center gap-1.5 rounded-control whitespace-nowrap outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-accent",
-        outline: "border bg-transparent hover:bg-accent hover:text-accent-foreground",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        // Warm white, not a coloured button: maximum contrast, zero hue.
+        default:
+          "bg-text-1 text-ground font-sans text-tiny font-medium hover:bg-text-1/90",
+        secondary:
+          "bg-surface-3 text-text-1 font-sans text-tiny hover:bg-surface-3/70",
+        outline:
+          "border border-hairline text-text-2 font-sans text-tiny hover:bg-surface-3 hover:text-text-1",
+        ghost: "text-text-2 font-sans text-tiny hover:bg-surface-3 hover:text-text-1",
       },
       size: {
         default: "h-7 px-2.5 [&_svg]:size-3.5",
-        sm: "h-6 px-2 text-[11px] [&_svg]:size-3",
+        sm: "h-6 px-2 text-micro [&_svg]:size-3",
         icon: "size-7 [&_svg]:size-3.5",
-        iconSm: "size-6 [&_svg]:size-3",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

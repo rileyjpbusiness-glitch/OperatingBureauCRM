@@ -45,21 +45,23 @@ export default async function SequencePage({
   return (
     <AppShell pipelines={pipelines} activeSlug={slug}>
       <div className="flex h-full flex-col">
-        <div className="flex h-9 shrink-0 items-center gap-2 border-b px-3">
+        <div className="border-hairline flex h-9 shrink-0 items-center gap-2.5 border-b px-4">
           <Link
             href={`/pipeline/${slug}`}
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-[11px]"
+            className="motion-fast text-text-3 hover:text-text-1 flex items-center gap-1.5 font-mono text-micro tracking-label uppercase outline-none"
           >
-            <ArrowLeft className="size-3" />
+            <ArrowLeft className="size-3" strokeWidth={1} />
             {board.pipeline.name}
           </Link>
-          <span className="text-muted-foreground/40">/</span>
-          <span className="text-[11px] font-medium">{board.stage.name}</span>
-          <span className="text-muted-foreground/60 ml-2 text-[10px]">
+          <span className="text-text-3">/</span>
+          <span className="text-text-1 font-mono text-micro tracking-label uppercase">
+            {board.stage.name}
+          </span>
+          <span className="text-text-3 ml-2 font-sans text-tiny">
             One follow-up a day for five days, then one a week for four weeks.
           </span>
           {board.dueCount > 0 ? (
-            <span className="bg-destructive/15 text-destructive rounded px-1.5 py-px font-mono text-[10px] tabular-nums">
+            <span className="text-signal-warm font-mono text-micro font-medium tracking-badge uppercase">
               {board.dueCount} due
             </span>
           ) : null}

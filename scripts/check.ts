@@ -80,7 +80,7 @@ async function main() {
   const stages = [];
   for (const name of names) {
     stages.push(
-      await repo.createStage({ pipelineId: pipeline.id, name, color: "#fff", staleAfterDays: 2 }),
+      await repo.createStage({ pipelineId: pipeline.id, name, staleAfterDays: 2 }),
     );
   }
   const [a, b, c, wonStage, lostStage] = stages;
@@ -89,7 +89,7 @@ async function main() {
   await repo.updateStage(lostStage.id, { isLost: true, staleAfterDays: null });
 
   const deliveryStage = await repo.createStage({
-    pipelineId: second.id, name: "Onboarding", color: "#fff",
+    pipelineId: second.id, name: "Onboarding",
   });
 
   // --- stale thresholds ---
@@ -99,7 +99,7 @@ async function main() {
   check("an omitted threshold falls back to the default",
     deliveryStage.staleAfterDays === 7, deliveryStage.staleAfterDays);
   const nulled = await repo.createStage({
-    pipelineId: second.id, name: "Never stale", color: "#fff", staleAfterDays: null,
+    pipelineId: second.id, name: "Never stale", staleAfterDays: null,
   });
   check("createStage keeps a null threshold null", nulled.staleAfterDays === null, nulled.staleAfterDays);
   check("updateStage can clear a threshold back to null",
@@ -271,7 +271,7 @@ async function main() {
 
   // --- follow-up cadence ---
   const seqStage = await repo.createStage({
-    pipelineId: pipeline.id, name: "Seq", color: "#fff", isSequence: true,
+    pipelineId: pipeline.id, name: "Seq", isSequence: true,
   });
   check("createStage records the sequence flag", seqStage.isSequence === true);
 

@@ -23,7 +23,6 @@ export async function getStage(id: string): Promise<Stage | null> {
 export async function createStage(input: {
   pipelineId: string;
   name: string;
-  color: string;
   staleAfterDays?: number | null;
   isSequence?: boolean;
   /** Insert at this index. Appends when omitted. */
@@ -58,7 +57,6 @@ export async function createStage(input: {
       pipelineId: input.pipelineId,
       name: input.name,
       position: index,
-      color: input.color,
       // `??` would collapse an explicit null into the default. Null means this
       // stage never goes stale, which is the whole point of it on Won and Lost.
       staleAfterDays:
@@ -77,7 +75,6 @@ export async function updateStage(
   id: string,
   patch: {
     name?: string;
-    color?: string;
     staleAfterDays?: number | null;
     isWon?: boolean;
     isLost?: boolean;

@@ -36,6 +36,20 @@
       "when": 1789414759033,
       "tag": "0004_delivery_stale_thresholds",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789422168221,
+      "tag": "0005_drop_tag_colour",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789422233618,
+      "tag": "0006_drop_stage_colour",
+      "breakpoints": true
     }
   ]
 }

@@ -66,7 +66,6 @@ export const stages = sqliteTable(
       .references(() => pipelines.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     position: integer("position").notNull(),
-    color: text("color").notNull(),
     /** Null means deals in this stage never go stale. */
     staleAfterDays: integer("stale_after_days").default(7),
     isWon: integer("is_won", { mode: "boolean" }).notNull().default(false),
@@ -246,7 +245,6 @@ export const tags = sqliteTable(
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
-    color: text("color").notNull(),
     createdAt: createdAt(),
   },
   // Widens to (workspace_id, name) when workspaces arrive.

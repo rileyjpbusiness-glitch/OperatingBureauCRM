@@ -24,7 +24,6 @@ export type Stage = {
   pipelineId: string;
   name: string;
   position: number;
-  color: string;
   staleAfterDays: number | null;
   isWon: boolean;
   isLost: boolean;
@@ -35,7 +34,6 @@ export type Stage = {
 export type Tag = {
   id: string;
   name: string;
-  color: string;
 };
 
 export type Contact = {
@@ -91,6 +89,12 @@ export type DealCard = Deal & {
   tags: Tag[];
   daysInStage: number;
   staleness: Staleness;
+  /**
+   * Days in stage as a fraction of this stage's stale threshold. 1 means the
+   * deal has just gone stale, 2 means twice over. Null when the stage has no
+   * threshold. The card's left edge is drawn from it.
+   */
+  agePressure: number | null;
   /** True when nextActionAt is set and already in the past. */
   nextActionOverdue: boolean;
 };

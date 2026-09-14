@@ -21,6 +21,7 @@ import type {
   DealFilters,
   Stage,
   Staleness,
+  Tag,
 } from "./types";
 
 const MS_PER_DAY = 86_400_000;
@@ -48,7 +49,7 @@ export async function getDeal(id: string): Promise<Deal | null> {
 
 function buildCards(
   rows: { deal: Deal; contact: Contact; stage: Stage }[],
-  tagMap: Map<string, { id: string; name: string; color: string }[]>,
+  tagMap: Map<string, Tag[]>,
   now: Date,
 ): DealCard[] {
   return rows.map(({ deal, contact, stage }) => {
@@ -59,6 +60,10 @@ function buildCards(
       tags: tagMap.get(contact.id) ?? [],
       daysInStage: days,
       staleness: stalenessFor(days, stage.staleAfterDays),
+      agePressure:
+        stage.staleAfterDays === null || stage.staleAfterDays <= 0
+          ? null
+          : days / stage.staleAfterDays,
       nextActionOverdue:
         deal.nextActionAt !== null && deal.nextActionAt.getTime() < now.getTime(),
     };

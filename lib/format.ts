@@ -1,3 +1,5 @@
+import type * as React from "react";
+
 import {
   daysBetween,
   formatDate,
@@ -93,4 +95,37 @@ export function formatDueDate(date: Date, now: Date = new Date()): string {
 
 export function formatDateTime(date: Date): string {
   return formatZonedDateTime(date);
+}
+
+/**
+ * The card's left edge, as two plain numbers for the `.silt` utility to colour.
+ *
+ * Clean until a deal is halfway to its stage's threshold, warming from there,
+ * shifting to hot between one and two times over, solid past that. A column
+ * where work is piling up glows down its left side before you read a number.
+ */
+export function siltStyle(pressure: number | null): React.CSSProperties {
+  if (pressure === null || pressure <= 0.5) {
+    return { "--silt-opacity": 0, "--silt-mix": 0 } as React.CSSProperties;
+  }
+
+  const clamp = (value: number) => Math.min(1, Math.max(0, value));
+
+  if (pressure <= 1) {
+    // Fading up through the second half of the stage's allowance.
+    return {
+      "--silt-opacity": clamp((pressure - 0.5) / 0.5) * 0.55,
+      "--silt-mix": 0,
+    } as React.CSSProperties;
+  }
+
+  if (pressure <= 2) {
+    const through = clamp(pressure - 1);
+    return {
+      "--silt-opacity": 0.55 + through * 0.45,
+      "--silt-mix": through,
+    } as React.CSSProperties;
+  }
+
+  return { "--silt-opacity": 1, "--silt-mix": 1 } as React.CSSProperties;
 }

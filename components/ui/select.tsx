@@ -17,14 +17,14 @@ function SelectTrigger({
   return (
     <SelectPrimitive.Trigger
       className={cn(
-        "border-input bg-card focus-visible:ring-ring flex h-7 w-full items-center justify-between gap-1 rounded-md border px-2 text-xs whitespace-nowrap outline-none focus-visible:ring-2 disabled:opacity-50 [&>span]:truncate",
+        "motion-fast border-hairline bg-surface-2 text-text-1 rounded-control flex h-7 w-full items-center justify-between gap-1 border px-2 font-sans text-tiny whitespace-nowrap outline-none hover:border-text-3 disabled:opacity-50 [&>span]:truncate",
         className,
       )}
       {...props}
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronDown className="size-3 opacity-60" />
+        <ChevronDown className="text-text-3 size-3" strokeWidth={1} />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
@@ -41,7 +41,7 @@ function SelectContent({
         position="popper"
         sideOffset={4}
         className={cn(
-          "bg-popover text-popover-foreground z-50 max-h-72 min-w-[8rem] overflow-hidden rounded-md border shadow-md",
+          "border-hairline bg-surface-2 text-text-1 rounded-control z-50 max-h-72 min-w-[8rem] overflow-hidden border",
           className,
         )}
         {...props}
@@ -62,7 +62,7 @@ function SelectItem({
   return (
     <SelectPrimitive.Item
       className={cn(
-        "focus:bg-accent relative flex cursor-default items-center rounded-sm py-1 pr-6 pl-2 text-xs outline-none select-none data-[disabled]:opacity-50",
+        "motion-fast focus:bg-surface-3 rounded-control relative flex cursor-default items-center py-1 pr-6 pl-2 font-sans text-tiny outline-none select-none data-[disabled]:opacity-50",
         className,
       )}
       {...props}
@@ -70,7 +70,7 @@ function SelectItem({
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
       <span className="absolute right-1.5 flex size-3 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <Check className="size-3" />
+          <Check className="size-3" strokeWidth={1} />
         </SelectPrimitive.ItemIndicator>
       </span>
     </SelectPrimitive.Item>

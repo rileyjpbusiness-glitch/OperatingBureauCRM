@@ -53,31 +53,31 @@ export function NotesTab({
           placeholder="Write a note. Markdown works. Saves when you click away."
         />
         {saving ? (
-          <p className="text-muted-foreground mt-1 text-[10px]">Saving...</p>
+          <p className="text-text-3 mt-1 font-mono text-micro">saving</p>
         ) : null}
       </div>
 
       {notes.length === 0 ? (
-        <p className="text-muted-foreground/60 text-[11px]">No notes yet.</p>
+        <p className="text-text-3 py-4 text-center font-mono text-micro">no notes yet</p>
       ) : (
         <ul className="space-y-2">
           {notes.map((note) => (
             <li
               key={note.id}
               className={cn(
-                "bg-card rounded-md border px-2.5 py-2",
-                note.pinned && "border-warning/40",
+                "border-hairline bg-surface-2 rounded-card border px-3.5 py-3",
+                note.pinned && "border-signal-warm/40",
               )}
             >
-              <div className="text-muted-foreground mb-1 flex items-center gap-2 text-[10px]">
-                <span className="font-medium">{OWNER_LABELS[note.author]}</span>
+              <div className="text-text-3 mb-2 flex items-center gap-2 font-mono text-micro">
+                <span className="text-text-2 font-medium">{OWNER_LABELS[note.author]}</span>
                 <span>{formatDateTime(note.createdAt)}</span>
                 <button
                   type="button"
                   title={note.pinned ? "Unpin" : "Pin to top"}
                   className={cn(
-                    "hover:text-foreground ml-auto",
-                    note.pinned && "text-warning",
+                    "motion-fast hover:text-text-1 ml-auto outline-none",
+                    note.pinned && "text-signal-warm",
                   )}
                   onClick={async () => {
                     await updateNoteAction({
@@ -87,21 +87,21 @@ export function NotesTab({
                     router.refresh();
                   }}
                 >
-                  <Pin className="size-3" />
+                  <Pin className="size-3" strokeWidth={1} />
                 </button>
                 <button
                   type="button"
                   title="Delete note"
-                  className="hover:text-destructive"
+                  className="motion-fast hover:text-signal-hot outline-none"
                   onClick={async () => {
                     await deleteNoteAction({ noteId: note.id });
                     router.refresh();
                   }}
                 >
-                  <Trash2 className="size-3" />
+                  <Trash2 className="size-3" strokeWidth={1} />
                 </button>
               </div>
-              <div className="prose-note text-[11px] leading-relaxed">
+              <div className="text-text-1 font-sans text-tiny leading-relaxed [&_strong]:font-medium">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {note.body}
                 </ReactMarkdown>

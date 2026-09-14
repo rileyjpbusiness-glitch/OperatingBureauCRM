@@ -48,19 +48,23 @@ function Row({
   label,
   children,
   wide = false,
+  top = false,
 }: {
   label: string;
   children: React.ReactNode;
   wide?: boolean;
+  /** Align the label with the first line when the value wraps. */
+  top?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "grid grid-cols-[92px_1fr] items-center gap-2",
+        "grid grid-cols-[92px_1fr] gap-2",
+        top ? "items-start" : "items-center",
         wide && "col-span-2",
       )}
     >
-      <span className="text-muted-foreground text-[10px] tracking-wide uppercase">
+      <span className="text-text-3 font-mono text-micro tracking-field uppercase">
         {label}
       </span>
       {children}
@@ -100,9 +104,9 @@ export function DealPanel({ detail }: { detail: DealDetail | null }) {
   return (
     <Sheet open onOpenChange={(open) => !open && close()}>
       <SheetContent aria-describedby={undefined}>
-        <div className="shrink-0 border-b px-4 py-3 pr-10">
+        <div className="border-hairline shrink-0 border-b px-4 py-3.5 pr-10">
           <SheetTitle asChild>
-            <h2 className="text-sm font-semibold">{contactName(contact)}</h2>
+            <h2 className="text-text-1 font-serif text-wordmark">{contactName(contact)}</h2>
           </SheetTitle>
           <SheetDescription className="sr-only">
             Deal details, notes and history
@@ -146,7 +150,7 @@ export function DealPanel({ detail }: { detail: DealDetail | null }) {
                   type="number"
                   className={cn(
                     "w-24 shrink-0 font-mono",
-                    isEstimatedValue(card.valueType) && "text-muted-foreground",
+                    isEstimatedValue(card.valueType) && "text-text-2",
                   )}
                   value={card.value > 0 ? String(card.value / 100) : ""}
                   {...(card.value > 0
@@ -193,10 +197,10 @@ export function DealPanel({ detail }: { detail: DealDetail | null }) {
           </div>
         </div>
 
-        <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-4 py-3">
+        <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-4 py-4">
           {/* The old Details tab, inlined: nothing about a deal is a click away. */}
           <details className="group mb-3" open>
-            <summary className="text-muted-foreground cursor-pointer list-none text-[10px] tracking-wide uppercase">
+            <summary className="text-text-3 motion-fast hover:text-text-2 cursor-pointer list-none font-mono text-micro tracking-label uppercase outline-none">
               Details
             </summary>
             <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
@@ -269,7 +273,7 @@ export function DealPanel({ detail }: { detail: DealDetail | null }) {
                     type="date"
                     className={cn(
                       "w-28 shrink-0",
-                      card.nextActionOverdue && "text-destructive",
+                      card.nextActionOverdue && "text-signal-hot",
                     )}
                     value={toDateInput(card.nextActionAt)}
                     {...(card.nextActionAt
@@ -287,16 +291,14 @@ export function DealPanel({ detail }: { detail: DealDetail | null }) {
                 </div>
               </Row>
               {card.tags.length > 0 ? (
-                <Row label="Tags">
-                  <div className="flex flex-wrap gap-1">
+                <Row label="Tags" wide top>
+                  {/* Neutral: colour in this interface means something about
+                      the work, and a tag is a label. */}
+                  <div className="flex flex-wrap gap-1.5">
                     {card.tags.map((tag) => (
                       <span
                         key={tag.id}
-                        className="rounded px-1 py-px text-[10px]"
-                        style={{
-                          backgroundColor: `${tag.color}22`,
-                          color: tag.color,
-                        }}
+                        className="bg-surface-3 text-text-2 rounded-control px-1.5 py-px font-mono text-micro"
                       >
                         {tag.name}
                       </span>
@@ -308,7 +310,7 @@ export function DealPanel({ detail }: { detail: DealDetail | null }) {
           </details>
 
           <Tabs defaultValue="notes">
-            <TabsList className="mb-3 border-b pb-2">
+            <TabsList className="border-hairline mb-4 border-b pb-2.5">
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="history">History</TabsTrigger>
             </TabsList>

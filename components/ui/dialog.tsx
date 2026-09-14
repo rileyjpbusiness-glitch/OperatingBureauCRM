@@ -19,10 +19,10 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-40 bg-black/50" />
+      <DialogPrimitive.Overlay className="data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-40 bg-black/60" />
       <DialogPrimitive.Content
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 fixed top-1/2 left-1/2 z-50 w-full max-w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-lg border p-4 shadow-xl",
+          "bg-ground border-hairline rounded-panel data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed top-1/2 left-1/2 z-50 w-full max-w-[var(--dialog-width)] -translate-x-1/2 -translate-y-1/2 border p-4 [animation-duration:var(--duration-settle)] [animation-timing-function:var(--ease-instrument)]",
           className,
         )}
         {...props}
@@ -30,9 +30,9 @@ function DialogContent({
         {children}
         <DialogPrimitive.Close
           aria-label="Close"
-          className="hover:bg-accent focus-visible:ring-ring absolute top-3 right-3 rounded p-1 outline-none focus-visible:ring-2"
+          className="motion-fast text-text-3 hover:text-text-1 hover:bg-surface-3 rounded-control absolute top-3 right-3 p-1 outline-none"
         >
-          <X className="size-3.5" />
+          <X className="size-3.5" strokeWidth={1} />
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>

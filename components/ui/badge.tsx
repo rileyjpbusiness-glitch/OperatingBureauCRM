@@ -4,19 +4,20 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded font-medium whitespace-nowrap [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:size-3",
+  "inline-flex items-center gap-1 rounded-control font-mono text-micro font-medium tracking-badge uppercase whitespace-nowrap",
   {
     variants: {
       variant: {
-        default: "bg-secondary text-secondary-foreground",
-        outline: "border text-muted-foreground",
-        success: "bg-success/15 text-success",
-        warning: "bg-warning/15 text-warning",
-        destructive: "bg-destructive/15 text-destructive",
+        default: "bg-surface-3 text-text-2",
+        outline: "border border-hairline text-text-3",
+        // The three signals, and nothing else.
+        warm: "bg-signal-warm/15 text-signal-warm",
+        hot: "bg-signal-hot/15 text-signal-hot",
+        good: "bg-signal-good/15 text-signal-good",
       },
       size: {
-        default: "h-5 px-1.5 text-[11px]",
-        sm: "h-4 px-1 text-[10px]",
+        default: "h-5 px-1.5",
+        sm: "h-4 px-1",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

@@ -104,7 +104,6 @@ async function main(): Promise<void> {
       const stage = await repo.createStage({
         pipelineId,
         name: spec.name,
-        color: spec.color,
         staleAfterDays: spec.staleAfterDays,
         isSequence: spec.isSequence ?? false,
       });

@@ -96,10 +96,11 @@ export function AppShell({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <header className="flex h-11 shrink-0 items-center gap-3 border-b px-3">
+      <header className="border-hairline flex h-[var(--topbar-height)] shrink-0 items-center gap-4 border-b px-4">
+        {/* Serif wordmark against a mono switcher: the whole tone in one line. */}
         <Link
           href="/"
-          className="shrink-0 text-xs font-semibold tracking-tight"
+          className="text-text-1 shrink-0 font-serif text-wordmark outline-none"
           title="Dashboard"
         >
           Bureau
@@ -111,10 +112,10 @@ export function AppShell({
               key={pipeline.id}
               href={`/pipeline/${pipeline.slug}`}
               className={cn(
-                "rounded px-2 py-1 text-[11px] font-medium transition-colors",
+                "motion-fast rounded-control px-2 py-1 font-mono text-micro tracking-label uppercase outline-none",
                 pipeline.slug === activeSlug
-                  ? "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                  ? "bg-surface-3 text-text-1"
+                  : "text-text-3 hover:text-text-1",
               )}
             >
               {pipeline.name}
@@ -123,13 +124,16 @@ export function AppShell({
         </nav>
 
         <div className="relative ml-2 w-56">
-          <Search className="text-muted-foreground/60 pointer-events-none absolute top-1/2 left-2 size-3 -translate-y-1/2" />
+          <Search
+            strokeWidth={1}
+            className="text-text-3 pointer-events-none absolute top-1/2 left-2 size-[var(--icon-size)] -translate-y-1/2"
+          />
           <Input
             ref={searchRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search    /"
-            className="pl-6"
+            className="pl-7"
             aria-label="Search leads"
           />
         </div>
@@ -144,10 +148,10 @@ export function AppShell({
                 title={candidate === "riley" ? "Riley" : "Kavi"}
                 onClick={() => setParam("owner", active ? null : candidate)}
                 className={cn(
-                  "size-6 rounded text-[11px] font-semibold transition-colors",
+                  "motion-fast rounded-control size-6 font-mono text-micro font-medium outline-none",
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent",
+                    ? "bg-surface-3 text-text-1"
+                    : "text-text-3 hover:text-text-1",
                 )}
               >
                 {ownerInitial(candidate as Owner)}
@@ -160,10 +164,8 @@ export function AppShell({
           type="button"
           onClick={() => setParam("stats", statsOn ? null : "1")}
           className={cn(
-            "shrink-0 rounded px-2 py-1 text-[11px] font-medium transition-colors",
-            statsOn
-              ? "bg-secondary text-foreground"
-              : "text-muted-foreground hover:bg-accent",
+            "motion-fast rounded-control shrink-0 px-2 py-1 font-mono text-micro tracking-label uppercase outline-none",
+            statsOn ? "bg-surface-3 text-text-1" : "text-text-3 hover:text-text-1",
           )}
         >
           Stats
@@ -175,7 +177,7 @@ export function AppShell({
             onClick={() => setAdding(true)}
             title="New lead (n)"
           >
-            <Plus />
+            <Plus strokeWidth={1.5} />
             Lead
           </Button>
         ) : null}

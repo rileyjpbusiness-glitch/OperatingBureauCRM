@@ -81,8 +81,8 @@ export function NewLeadDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogTitle className="text-sm font-semibold">New lead</DialogTitle>
-        <DialogDescription className="text-muted-foreground mt-0.5 text-[11px]">
+        <DialogTitle className="text-text-1 font-serif text-wordmark">New lead</DialogTitle>
+        <DialogDescription className="text-text-3 mt-1 font-sans text-tiny">
           Creates the contact and a deal at the top of the pipeline.
         </DialogDescription>
 
@@ -134,7 +134,7 @@ export function NewLeadDialog({
           </div>
 
           {error ? (
-            <p className="text-destructive text-[11px]">{error}</p>
+            <p className="text-signal-hot font-sans text-tiny">{error}</p>
           ) : null}
 
           <div className="flex justify-end gap-2 pt-1">

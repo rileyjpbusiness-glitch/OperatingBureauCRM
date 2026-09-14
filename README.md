@@ -154,6 +154,36 @@ but is reassignable, so delivery can sit with a different operator than the one
 who sourced the lead. The board, the cards and the owner filter all read the
 deal's owner.
 
+## The visual system
+
+Every colour, radius, duration and type size in the application is a custom
+property in `app/globals.css`. No component carries a literal value; the audit
+for that is `grep -rniE "#[0-9a-f]{3,8}|rgba?\(" components app lib scripts`,
+which returns nothing.
+
+The interface is monochrome and colour is earned. There are three non-neutral
+colours in the whole application: `--signal-warm` for due and stale, and for the
+worst converting step; `--signal-hot` for badly overdue; `--signal-good` for won.
+Stage markers, owner chips and tags are all neutral, because a stage's position
+is its identity and a tag is a label.
+
+Three families, self-hosted at build time by `next/font`. Prose is Instrument
+Sans, data is IBM Plex Mono, and the five dashboard figures are Instrument
+Serif. A contact's name is a name; their MRR is a measurement; those should not
+look like the same kind of thing.
+
+**Age silt.** Every card carries a 2px left edge whose colour is a function of
+how long the deal has sat in its stage: clean until halfway to the threshold,
+warming from there, hot past double. A healthy column has clean-edged cards; a
+column where work is piling up glows down its left side. You see the bottleneck
+as texture before you read a number, and it costs no screen space. Moving a card
+forward fades its edge back to nothing over 400ms.
+
+**The sequence rule.** The sub-board's columns sit on a single hairline with a
+tick under each, like a measuring rule, so nine columns read as one cadence
+rather than nine boxes. Ticks with work due today are drawn warm. The rule
+breaks before No Answer, which is off the track rather than the last step of it.
+
 ### One timezone, not the viewer's
 
 Every date decision resolves in `America/New_York`, set once as `TIME_ZONE` in

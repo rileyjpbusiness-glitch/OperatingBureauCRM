@@ -122,7 +122,7 @@ export function HistoryTab({
     <div className="space-y-3">
       {/* Direction is inferred from the outcome, and the sequence step is set
           by dragging on the sub-board, so neither is asked for here. */}
-      <div className="bg-card/50 flex items-center gap-1.5 rounded-md border p-1.5">
+      <div className="border-hairline bg-surface-1 rounded-card flex items-center gap-1.5 border p-1.5">
         <Select
           value={channel}
           onValueChange={(next) => setChannel(next as TouchChannel)}
@@ -167,7 +167,7 @@ export function HistoryTab({
       </div>
 
       {history.length === 0 ? (
-        <p className="text-muted-foreground/60 text-[11px]">Nothing yet.</p>
+        <p className="text-text-3 py-4 text-center font-mono text-micro">nothing yet</p>
       ) : (
         <ol className="space-y-1.5">
           {history.map((entry) => {
@@ -184,25 +184,25 @@ export function HistoryTab({
                     "mt-1.5 size-1.5 shrink-0 rounded-full",
                     // Touches are things a person did; activities are things
                     // the system recorded.
-                    entry.kind === "touch" ? "bg-primary" : "bg-muted-foreground/40",
+                    entry.kind === "touch" ? "bg-text-2" : "bg-text-3",
                   )}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <span
                       className={cn(
-                        "text-[11px]",
-                        entry.kind === "activity" && "text-muted-foreground",
+                        "font-sans text-tiny",
+                        entry.kind === "activity" ? "text-text-3" : "text-text-1",
                       )}
                     >
                       {describe(entry, stages)}
                     </span>
-                    <span className="text-muted-foreground/60 shrink-0 text-[10px]">
+                    <span className="text-text-3 shrink-0 font-mono text-micro">
                       {formatDateTime(entry.at)}
                     </span>
                   </div>
                   {snippetText ? (
-                    <p className="text-muted-foreground mt-0.5 text-[11px] leading-relaxed">
+                    <p className="text-text-2 mt-1 font-sans text-tiny leading-relaxed">
                       {snippetText}
                     </p>
                   ) : null}

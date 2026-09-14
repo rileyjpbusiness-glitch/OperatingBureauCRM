@@ -48,7 +48,6 @@ export type KanbanColumn = {
   railLabel?: string;
   railCount?: number;
   onRailClick?: () => void;
-  accentClassName?: string;
   dimmed?: boolean;
 };
 
@@ -77,7 +76,7 @@ function SortableCard({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn("touch-none", isDragging && "opacity-40")}
+      className={cn("motion-settle touch-none", isDragging && "opacity-40")}
       {...attributes}
       {...listeners}
       role="button"
@@ -95,12 +94,15 @@ function SortableCard({
   );
 }
 
-function ColumnBody({
+function Column({
   column,
+  live,
   renderCard,
   onOpen,
 }: {
   column: KanbanColumn;
+  /** Header content from the server's copy, so counts stay fresh mid-drag. */
+  live: KanbanColumn;
   renderCard: (card: DealCard) => React.ReactNode;
   onOpen: (dealId: string) => void;
 }) {
@@ -110,30 +112,39 @@ function ColumnBody({
   });
 
   return (
-    <div
+    <section
       ref={setNodeRef}
+      aria-label={live.railLabel}
       className={cn(
-        "scrollbar-thin flex-1 space-y-1.5 overflow-y-auto p-1.5 transition-colors",
-        isOver && "bg-primary/5",
+        // Columns share the width so the board fits without scrolling; below
+        // the floor they stop shrinking and the board scrolls.
+        "motion-base border-hairline bg-surface-1 rounded-card flex h-full min-w-[var(--column-min-width)] flex-1 flex-col border",
+        // The receiving column lifts. No dashed outline, no fill colour.
+        isOver && "bg-surface-2 border-text-3",
+        live.dimmed && "opacity-70",
       )}
     >
-      <SortableContext
-        items={column.cards.map((card) => card.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        {column.cards.length === 0 ? (
-          <p className="text-muted-foreground/40 px-1 py-3 text-center text-[11px]">
-            Empty
-          </p>
-        ) : (
-          column.cards.map((card) => (
-            <SortableCard key={card.id} card={card} onOpen={onOpen}>
-              {renderCard(card)}
-            </SortableCard>
-          ))
-        )}
-      </SortableContext>
-    </div>
+      {live.header}
+
+      <div className="scrollbar-thin flex-1 space-y-2 overflow-y-auto p-2.5">
+        <SortableContext
+          items={column.cards.map((card) => card.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {column.cards.length === 0 ? (
+            <p className="text-text-3 px-1 py-3 text-center font-mono text-micro">
+              empty
+            </p>
+          ) : (
+            column.cards.map((card) => (
+              <SortableCard key={card.id} card={card} onOpen={onOpen}>
+                {renderCard(card)}
+              </SortableCard>
+            ))
+          )}
+        </SortableContext>
+      </div>
+    </section>
   );
 }
 
@@ -150,16 +161,15 @@ function Rail({ column }: { column: KanbanColumn }) {
       onClick={column.onRailClick}
       title={`Expand ${column.railLabel ?? ""}`}
       className={cn(
-        "bg-card/20 hover:bg-card/50 flex h-full w-12 shrink-0 cursor-pointer flex-col items-center gap-2 rounded-md border py-2 transition-colors",
-        column.accentClassName,
-        isOver && "bg-primary/10 border-primary/50",
+        "motion-base border-hairline bg-surface-1 hover:bg-surface-2 rounded-card flex h-full w-12 shrink-0 cursor-pointer flex-col items-center gap-2 border py-2.5 outline-none",
+        isOver && "bg-surface-2 border-text-3",
       )}
     >
-      <span className="text-muted-foreground font-mono text-[11px] tabular-nums">
+      <span className="text-text-2 font-mono text-micro">
         {column.railCount}
       </span>
       <span
-        className="text-muted-foreground text-[10px] font-semibold tracking-widest uppercase"
+        className="text-text-3 font-mono text-micro font-semibold tracking-label uppercase"
         style={{ writingMode: "vertical-rl" }}
       >
         {column.railLabel}
@@ -178,10 +188,8 @@ function Banner({ banner }: { banner: KanbanBanner }) {
     <div
       ref={setNodeRef}
       className={cn(
-        "flex h-9 shrink-0 items-center justify-center rounded-md border border-dashed text-[11px] font-medium transition-colors",
-        isOver
-          ? "border-success bg-success/10 text-success"
-          : "text-muted-foreground/70",
+        "motion-base border-hairline rounded-card flex h-9 shrink-0 items-center justify-center border font-mono text-micro tracking-badge uppercase",
+        isOver ? "bg-surface-2 border-text-3 text-text-1" : "text-text-3",
       )}
     >
       {banner.label}
@@ -371,39 +379,25 @@ export function Kanban({
       onDragEnd={handleDragEnd}
       onDragCancel={() => setDragging(null)}
     >
-      <div className="flex h-full flex-col gap-2 p-2">
+      <div className="flex h-full flex-col gap-[var(--column-gap)] p-[var(--column-gap)]">
         {banner ? <Banner banner={banner} /> : null}
 
-        <div className="scrollbar-thin flex min-h-0 flex-1 gap-2 overflow-x-auto overflow-y-hidden">
+        <div className="scrollbar-thin flex min-h-0 flex-1 gap-[var(--column-gap)] overflow-x-auto overflow-y-hidden">
           {local.map((column) => {
             const live = headers.get(column.id) ?? column;
             if (live.collapsed) {
               return (
-                <Rail
-                  key={column.id}
-                  column={{ ...live, cards: column.cards }}
-                />
+                <Rail key={column.id} column={{ ...live, cards: column.cards }} />
               );
             }
             return (
-              <section
+              <Column
                 key={column.id}
-                aria-label={live.railLabel}
-                className={cn(
-                  // Columns share the width so the board fits without scrolling;
-                  // below the floor they stop shrinking and the board scrolls.
-                  "bg-card/20 flex h-full min-w-[184px] flex-1 flex-col rounded-md border",
-                  live.accentClassName,
-                  live.dimmed && "opacity-70",
-                )}
-              >
-                {live.header}
-                <ColumnBody
-                  column={column}
-                  renderCard={renderCard}
-                  onOpen={onOpen}
-                />
-              </section>
+                column={column}
+                live={live}
+                renderCard={renderCard}
+                onOpen={onOpen}
+              />
             );
           })}
         </div>
@@ -411,7 +405,7 @@ export function Kanban({
 
       <DragOverlay dropAnimation={null}>
         {dragging ? (
-          <div className="w-[240px] rotate-1 opacity-95">
+          <div className="drag-lift w-[var(--card-max-width)]">
             {renderDragCard(dragging)}
           </div>
         ) : null}

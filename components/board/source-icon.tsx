@@ -13,7 +13,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * lucide dropped brand marks in v1, so Instagram DMs get the generic message
- * bubble rather than the logo.
+ * bubble rather than the logo. Hairline stroke, so they read as annotation
+ * rather than as buttons.
  */
 const ICONS: Record<Source, LucideIcon> = {
   ig_dm: MessageCircle,
@@ -44,7 +45,8 @@ export function SourceIcon({
   return (
     <Icon
       aria-label={SOURCE_LABELS[source]}
-      className={cn("size-3 shrink-0", className)}
+      strokeWidth={1}
+      className={cn("text-text-3 size-[var(--icon-size)] shrink-0", className)}
     />
   );
 }

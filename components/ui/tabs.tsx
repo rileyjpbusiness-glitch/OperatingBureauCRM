@@ -13,7 +13,7 @@ function TabsList({
 }: React.ComponentProps<typeof TabsPrimitive.List>) {
   return (
     <TabsPrimitive.List
-      className={cn("flex items-center gap-0.5", className)}
+      className={cn("flex items-center gap-4", className)}
       {...props}
     />
   );
@@ -26,7 +26,7 @@ function TabsTrigger({
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "text-muted-foreground hover:text-foreground data-[state=active]:bg-secondary data-[state=active]:text-foreground rounded px-2 py-1 text-[11px] font-medium transition-colors outline-none",
+        "motion-fast text-text-3 data-[state=active]:text-text-1 font-mono text-micro tracking-label uppercase outline-none hover:text-text-2",
         className,
       )}
       {...props}
@@ -39,10 +39,7 @@ function TabsContent({
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.Content>) {
   return (
-    <TabsPrimitive.Content
-      className={cn("outline-none", className)}
-      {...props}
-    />
+    <TabsPrimitive.Content className={cn("outline-none", className)} {...props} />
   );
 }
 

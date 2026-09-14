@@ -45,10 +45,10 @@ export function InlineField({
         type="button"
         onClick={() => setEditing(true)}
         className={cn(
-          "hover:bg-accent/60 block w-full truncate rounded px-1 py-0.5 text-left text-[11px] transition-colors",
+          "motion-fast hover:bg-surface-3 rounded-control text-text-1 block w-full truncate px-1 py-0.5 text-left font-sans text-tiny outline-none",
           // An empty field gets a faint dashed rule: enough to read as
           // fillable rather than broken, without a word of placeholder text.
-          !value && "border-muted-foreground/25 min-h-[1.25rem] border-b border-dashed",
+          !value && "border-hairline min-h-[1.25rem] border-b border-dashed",
           className,
         )}
       >
@@ -62,7 +62,7 @@ export function InlineField({
     value: draft,
     onBlur: commit,
     className: cn(
-      "border-input bg-card focus-visible:ring-ring w-full rounded border px-1 py-0.5 text-[11px] outline-none focus-visible:ring-2",
+      "border-hairline bg-surface-2 text-text-1 rounded-control w-full border px-1 py-0.5 font-sans text-tiny outline-none",
       className,
     ),
   };

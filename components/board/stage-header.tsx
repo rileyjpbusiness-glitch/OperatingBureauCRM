@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Maximize2 } from "lucide-react";
 
 import type { StageWithMetrics } from "@/lib/repo/types";
 import { formatCentsCompact, formatDays, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
- * Name and count by default. The rest of the numbers are behind the Stats
- * toggle, because they are worth reading weekly and in the way daily.
+ * Two lines, always, so a stage name can never be truncated by whatever else
+ * the header happens to be carrying. Name and count on the first; the due
+ * badge and, in Stats mode, the numbers on the second.
+ *
+ * A column's position is its identity, so there is no colour marker.
  */
 export function StageHeader({
   stage,
@@ -24,73 +26,78 @@ export function StageHeader({
   sequenceHref?: string;
 }) {
   const { metrics } = stage;
+  const hasSecondLine = showStats || metrics.dueCount > 0;
+
+  const dueBadge =
+    metrics.dueCount > 0 ? (
+      <span className="text-signal-warm font-mono text-micro font-medium tracking-badge uppercase">
+        {metrics.dueCount} due
+      </span>
+    ) : null;
 
   const body = (
     <>
-      <div className="flex items-center gap-1.5">
-        <span
-          aria-hidden
-          className="size-2 shrink-0 rounded-full"
-          style={{ backgroundColor: stage.color }}
-        />
-        <h2 className="truncate text-[11px] font-semibold tracking-wide uppercase">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2
+          className={cn(
+            "motion-fast truncate font-mono text-micro font-semibold tracking-label uppercase",
+            // The only affordance on the link: the name lifts on hover.
+            sequenceHref ? "text-text-3 group-hover:text-text-1" : "text-text-3",
+          )}
+        >
           {stage.name}
         </h2>
-        {sequenceHref ? (
-          <Maximize2 className="text-muted-foreground/70 size-3 shrink-0" />
-        ) : null}
-
-        <span className="ml-auto flex shrink-0 items-center gap-1.5">
-          {/* What this column owes you today. No badge when the answer is
-              nothing, so a zero never competes for attention. */}
-          {metrics.dueCount > 0 ? (
-            <span className="bg-destructive/15 text-destructive rounded px-1 py-px font-mono text-[10px] tabular-nums">
-              {metrics.dueCount} due
-            </span>
-          ) : null}
-          <span className="text-muted-foreground font-mono text-[11px] tabular-nums">
-            {metrics.count}
-          </span>
+        <span className="text-text-2 shrink-0 font-mono text-micro">
+          {metrics.count}
         </span>
       </div>
 
-      {showStats ? (
-        <div className="text-muted-foreground mt-1.5 flex items-center justify-between gap-2 font-mono text-[10px] tabular-nums">
-          <span>{formatCentsCompact(metrics.totalMonthlyRecurringCents)}</span>
-
-          {metrics.conversionFromPrevious === null ? (
-            <span className="text-muted-foreground/40">&mdash;</span>
+      {hasSecondLine ? (
+        <div className="mt-1.5 flex items-center justify-between gap-2 font-mono text-micro">
+          {showStats ? (
+            <>
+              <span className="text-text-2">
+                {formatCentsCompact(metrics.totalMonthlyRecurringCents)}
+              </span>
+              <span
+                className={cn(
+                  isBottleneck
+                    ? "text-signal-warm font-semibold"
+                    : "text-text-3",
+                )}
+              >
+                {metrics.conversionFromPrevious === null
+                  ? "—"
+                  : formatPercent(metrics.conversionFromPrevious)}
+              </span>
+              <span className="text-text-3">
+                {metrics.avgDaysInStage === null
+                  ? "—"
+                  : formatDays(metrics.avgDaysInStage)}
+              </span>
+              {dueBadge}
+            </>
           ) : (
-            <span className={cn(isBottleneck && "text-warning font-semibold")}>
-              {formatPercent(metrics.conversionFromPrevious)}
-            </span>
+            dueBadge
           )}
-
-          <span>
-            {metrics.avgDaysInStage === null
-              ? "—"
-              : formatDays(metrics.avgDaysInStage)}
-          </span>
         </div>
       ) : null}
     </>
   );
 
-  const className = "rounded-t-md border-b px-2.5 py-2 bg-card/40";
+  const shell = "border-hairline border-b px-2.5 py-2.5";
 
-  // The whole header is the target, not the icon: a 12px hit area is not a
-  // control anyone finds twice.
   if (sequenceHref) {
     return (
       <Link
         href={sequenceHref}
         title="Open the follow-up sequence"
-        className={cn(className, "hover:bg-accent/60 block transition-colors")}
+        className={cn(shell, "group block outline-none")}
       >
         {body}
       </Link>
     );
   }
 
-  return <header className={className}>{body}</header>;
+  return <header className={shell}>{body}</header>;
 }

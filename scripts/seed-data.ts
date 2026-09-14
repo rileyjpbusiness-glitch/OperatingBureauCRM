@@ -2,7 +2,6 @@ import type { Owner, Source, ValueType } from "../lib/db/enums";
 
 export type StageSpec = {
   name: string;
-  color: string;
   staleAfterDays: number | null;
   isWon?: boolean;
   isLost?: boolean;
@@ -10,31 +9,30 @@ export type StageSpec = {
 };
 
 export const OUTBOUND_STAGES: StageSpec[] = [
-  { name: "New Lead", color: "#64748b", staleAfterDays: 3 },
-  { name: "Researched", color: "#6366f1", staleAfterDays: 4 },
+  { name: "New Lead", staleAfterDays: 3 },
+  { name: "Researched", staleAfterDays: 4 },
   // Sending the first message is day one of the cadence, so contacting and
   // following up are one stage with a sub-board behind it.
   {
     name: "In Sequence",
-    color: "#8b5cf6",
-    staleAfterDays: 30,
+       staleAfterDays: 30,
     isSequence: true,
   },
-  { name: "Replied", color: "#14b8a6", staleAfterDays: 3 },
-  { name: "Call Booked", color: "#f59e0b", staleAfterDays: 7 },
+  { name: "Replied", staleAfterDays: 3 },
+  { name: "Call Booked", staleAfterDays: 7 },
   // The call was taken and we are working to close it.
-  { name: "Closing", color: "#ec4899", staleAfterDays: 5 },
-  { name: "Won", color: "#22c55e", staleAfterDays: null, isWon: true },
-  { name: "Lost", color: "#ef4444", staleAfterDays: null, isLost: true },
+  { name: "Closing", staleAfterDays: 5 },
+  { name: "Won", staleAfterDays: null, isWon: true },
+  { name: "Lost", staleAfterDays: null, isLost: true },
 ];
 
 export const DELIVERY_STAGES: StageSpec[] = [
   // Onboarding is exactly where a signed client goes quiet, so it has the
   // tightest clock on either board.
-  { name: "Onboarding", color: "#6366f1", staleAfterDays: 3 },
-  { name: "Building", color: "#8b5cf6", staleAfterDays: 7 },
-  { name: "Live", color: "#22c55e", staleAfterDays: 30 },
-  { name: "Churned", color: "#ef4444", staleAfterDays: null, isLost: true },
+  { name: "Onboarding", staleAfterDays: 3 },
+  { name: "Building", staleAfterDays: 7 },
+  { name: "Live", staleAfterDays: 30 },
+  { name: "Churned", staleAfterDays: null, isLost: true },
 ];
 
 /** Index into the outbound funnel, ignoring the Lost stage. */

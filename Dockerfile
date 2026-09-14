@@ -22,6 +22,8 @@ WORKDIR /app
 RUN apt-get update \
  && apt-get install -y --no-install-recommends python3 make g++ \
  && rm -rf /var/lib/apt/lists/*
+# After the toolchain, so editing a dependency does not reinstall apt packages.
+COPY package.json package-lock.json ./
 # Dev dependencies are kept: the runtime image needs tsx so that bootstrap,
 # seed and the database inspectors can be run over `fly ssh console`.
 RUN npm ci

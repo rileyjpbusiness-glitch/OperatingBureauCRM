@@ -65,7 +65,7 @@ to point any command at a different file.
 
 1. Scaffold, dependencies, Tailwind, dark theme, blank page rendering - **done**
 2. Drizzle schema, migrations, repo layer, seed script
-3. Pipeline board, read-only, with stage math in the column headers
+3. Pipeline board, read-only, with stage math in the column headers - **done**
 4. Drag and drop with persistence and activity logging
 5. Deal detail panel (Notes, Activity, Touches, Details)
 6. Search, filters, quick-add, keyboard shortcuts
@@ -87,6 +87,17 @@ current macOS with `Unknown system error -88` (EBADARCH), which breaks
 `npm install` outright. The override pins that one nested copy to esbuild 0.25,
 which `drizzle-kit` already depends on directly. `tsx` keeps its own esbuild 0.28
 untouched. Remove the override once drizzle-kit drops `@esbuild-kit`.
+
+## Screens so far
+
+`/pipeline/[slug]` is the board. Two pipelines, switchable from the top bar.
+`/` redirects to the first pipeline until the dashboard replaces it in phase 8.
+
+The board scrolls horizontally, each column scrolls vertically, and the page
+itself never scrolls. Every number in a column header explains itself on hover,
+including where a rate is withheld and why, because a metric you cannot
+interrogate is one you stop trusting. The worst converting step in the pipeline
+carries an amber border and a falling arrow on its rate.
 
 ## How the data model works
 

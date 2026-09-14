@@ -4,6 +4,8 @@ import { alias } from "drizzle-orm/sqlite-core";
 import { db } from "@/lib/db/client";
 import { activities, contacts, deals, stages } from "@/lib/db/schema";
 
+import { isDueOrOverdue } from "@/lib/dates";
+
 import { dealFilterConditions } from "./filters";
 import { monthlyRecurringCents } from "./money";
 import type { DealCard, DealFilters, Stage, StageMetrics } from "./types";
@@ -124,9 +126,13 @@ export function stageMetricsFor(input: {
 
     let recurring = 0;
     let totalDays = 0;
+    let dueCount = 0;
     for (const card of cards) {
       recurring += monthlyRecurringCents(card.value, card.valueType);
       totalDays += card.daysInStage;
+      if (card.status === "open" && isDueOrOverdue(card.nextActionAt, now)) {
+        dueCount += 1;
+      }
     }
 
     const index = funnelIndex.get(stage.id);
@@ -148,6 +154,7 @@ export function stageMetricsFor(input: {
     byStageId[stage.id] = {
       stageId: stage.id,
       count: cards.length,
+      dueCount,
       totalMonthlyRecurringCents: recurring,
       avgDaysInStage: cards.length === 0 ? null : totalDays / cards.length,
       conversionFromPrevious,
@@ -158,6 +165,10 @@ export function stageMetricsFor(input: {
   let bottleneckStageId: string | null = null;
   let worstRate = Number.POSITIVE_INFINITY;
   for (const stage of funnel) {
+    // Closing to Won is a real step, but Won is an outcome rather than a stage
+    // anyone works, and it renders as a collapsed rail. Flagging it would hide
+    // the flag and point at nothing actionable.
+    if (stage.isWon) continue;
     const metrics = byStageId[stage.id];
     if (!metrics || metrics.conversionFromPrevious === null) continue;
     if (metrics.conversionFromPrevious < worstRate) {

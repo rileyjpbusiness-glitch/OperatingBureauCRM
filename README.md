@@ -124,7 +124,18 @@ number that tells you where work is piling up today.
 
 **Cards carry one badge, not two.** It answers what you owe this person next:
 the next action date if one is set. Only when nothing is scheduled does age take
-the slot, and only once it is past the stage's own threshold.
+the slot, and only once it is past the stage's own threshold. Delivery cards get
+the same treatment, with tight thresholds (Onboarding 3 days, Building 7, Live
+30) because onboarding is exactly where a signed client goes quiet.
+
+**Zero is an absence, not a value.** A lead nobody has priced renders no value
+line at all rather than claiming to be worth $0, and empty fields in the detail
+panel are empty slots rather than eight repetitions of "Not set".
+
+**The bottleneck is one coloured number.** The worst converting step shows its
+rate in amber when Stats is on, and nothing else changes. Won is excluded from
+the running: Closing to Won is a real step, but Won is an outcome rather than a
+stage anyone works, and it renders collapsed, so flagging it would hide the flag.
 
 **Winning a deal opens the next pipeline's version of it.** Moving a deal into a
 stage marked `is_won` sets its status, logs it, and creates a fresh open deal for

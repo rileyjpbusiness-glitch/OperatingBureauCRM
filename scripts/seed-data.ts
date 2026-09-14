@@ -29,8 +29,10 @@ export const OUTBOUND_STAGES: StageSpec[] = [
 ];
 
 export const DELIVERY_STAGES: StageSpec[] = [
-  { name: "Onboarding", color: "#6366f1", staleAfterDays: 5 },
-  { name: "Building", color: "#8b5cf6", staleAfterDays: 14 },
+  // Onboarding is exactly where a signed client goes quiet, so it has the
+  // tightest clock on either board.
+  { name: "Onboarding", color: "#6366f1", staleAfterDays: 3 },
+  { name: "Building", color: "#8b5cf6", staleAfterDays: 7 },
   { name: "Live", color: "#22c55e", staleAfterDays: 30 },
   { name: "Churned", color: "#ef4444", staleAfterDays: null, isLost: true },
 ];

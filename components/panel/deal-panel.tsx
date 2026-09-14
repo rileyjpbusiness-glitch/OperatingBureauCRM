@@ -142,14 +142,17 @@ export function DealPanel({ detail }: { detail: DealDetail | null }) {
             </Row>
             <Row label="Value" wide>
               <div className="flex min-w-0 items-center gap-2">
+                {/* An unpriced deal shows an empty slot, not "$0/mo". */}
                 <InlineField
                   type="number"
                   className={cn(
                     "w-24 shrink-0 font-mono",
                     isEstimatedValue(card.valueType) && "text-muted-foreground",
                   )}
-                  value={String(card.value / 100)}
-                  display={formatDealValue(card.value, card.valueType)}
+                  value={card.value > 0 ? String(card.value / 100) : ""}
+                  {...(card.value > 0
+                    ? { display: formatDealValue(card.value, card.valueType) }
+                    : {})}
                   onSave={(value) =>
                     saveDeal({ valueDollars: Number(value) || 0 })
                   }
@@ -254,25 +257,32 @@ export function DealPanel({ detail }: { detail: DealDetail | null }) {
                   </SelectContent>
                 </Select>
               </Row>
-              <Row label="Next action">
-                <InlineField
-                  value={card.nextAction ?? ""}
-                  onSave={(value) => saveDeal({ nextAction: value || null })}
-                />
-              </Row>
-              <Row label="Due">
-                <InlineField
-                  type="date"
-                  value={toDateInput(card.nextActionAt)}
-                  {...(card.nextActionAt
-                    ? { display: formatDueDate(card.nextActionAt) }
-                    : {})}
-                  onSave={(value) =>
-                    saveDeal({
-                      nextActionAt: value ? new Date(value) : null,
-                    })
-                  }
-                />
+              {/* One row: these are always set together and always read
+                  together, so splitting them made you look in two places. */}
+              <Row label="Next action" wide>
+                <div className="flex min-w-0 items-center gap-2">
+                  <InlineField
+                    className="min-w-0 flex-1"
+                    value={card.nextAction ?? ""}
+                    onSave={(value) => saveDeal({ nextAction: value || null })}
+                  />
+                  <InlineField
+                    type="date"
+                    className={cn(
+                      "w-28 shrink-0",
+                      card.nextActionOverdue && "text-destructive",
+                    )}
+                    value={toDateInput(card.nextActionAt)}
+                    {...(card.nextActionAt
+                      ? { display: formatDueDate(card.nextActionAt) }
+                      : {})}
+                    onSave={(value) =>
+                      saveDeal({
+                        nextActionAt: value ? new Date(value) : null,
+                      })
+                    }
+                  />
+                </div>
               </Row>
               {card.tags.length > 0 ? (
                 <Row label="Tags">

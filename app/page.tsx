@@ -33,6 +33,10 @@ export default async function DashboardPage() {
     getDashboard(),
   ]);
 
+  // Past a dozen this stops being a queue and becomes wallpaper. The header
+  // still reports the real total.
+  const visible = dashboard.needsAttention.slice(0, 12);
+
   const stageNames = new Map(
     (
       await Promise.all(pipelines.map((pipeline) => listStages(pipeline.id)))
@@ -45,14 +49,13 @@ export default async function DashboardPage() {
     <AppShell pipelines={pipelines} activeSlug="">
       <div className="scrollbar-thin h-full overflow-y-auto p-3">
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {/* Touches, not new rows: adding a lead to a database is not
+              work, messaging someone is, and it drives every other number. */}
           <Tile
-            label="New leads this week"
-            value={String(dashboard.newLeadsThisWeek)}
+            label="Touches logged this week"
+            value={String(dashboard.touchesThisWeek)}
           />
-          <Tile
-            label="Follow-ups due today"
-            value={String(dashboard.followUpsDueToday)}
-          />
+          <Tile label="Follow-ups due" value={String(dashboard.followUpsDue)} />
           <Tile
             label="Calls booked this week"
             value={String(dashboard.callsBookedThisWeek)}
@@ -71,13 +74,13 @@ export default async function DashboardPage() {
             </span>
           </h2>
 
-          {dashboard.needsAttention.length === 0 ? (
+          {visible.length === 0 ? (
             <p className="text-muted-foreground/60 text-[11px]">
               Nothing is overdue or past its stage threshold.
             </p>
           ) : (
             <ul className="divide-border divide-y rounded-md border">
-              {dashboard.needsAttention.map((card) => (
+              {visible.map((card) => (
                 <li key={card.id}>
                   <Link
                     href={`/pipeline/${pipelines.find((p) => p.id === card.pipelineId)?.slug ?? "outbound"}?deal=${card.id}`}

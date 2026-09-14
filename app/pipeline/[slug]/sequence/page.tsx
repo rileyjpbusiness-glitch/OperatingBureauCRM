@@ -58,6 +58,11 @@ export default async function SequencePage({
           <span className="text-muted-foreground/60 ml-2 text-[10px]">
             One follow-up a day for five days, then one a week for four weeks.
           </span>
+          {board.dueCount > 0 ? (
+            <span className="bg-destructive/15 text-destructive rounded px-1.5 py-px font-mono text-[10px] tabular-nums">
+              {board.dueCount} due
+            </span>
+          ) : null}
         </div>
 
         <div className="min-h-0 flex-1">

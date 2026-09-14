@@ -55,19 +55,23 @@ export function DealCard({
         </p>
       ) : null}
 
-      <p
-        className={cn(
-          "mt-1.5 font-mono text-[11px] tabular-nums",
-          // A rev-share figure is a guess, and muting it says so without
-          // needing a suffix.
-          isEstimatedValue(card.valueType) && "text-muted-foreground",
-        )}
-        title={
-          isEstimatedValue(card.valueType) ? "Rev-share estimate" : undefined
-        }
-      >
-        {formatDealValue(card.value, card.valueType)}
-      </p>
+      {/* Zero is an absence, not a value. A lead nobody has priced yet says
+          nothing here rather than claiming to be worth $0. */}
+      {card.value > 0 ? (
+        <p
+          className={cn(
+            "mt-1.5 font-mono text-[11px] tabular-nums",
+            // A rev-share figure is a guess, and muting it says so without
+            // needing a suffix.
+            isEstimatedValue(card.valueType) && "text-muted-foreground",
+          )}
+          title={
+            isEstimatedValue(card.valueType) ? "Rev-share estimate" : undefined
+          }
+        >
+          {formatDealValue(card.value, card.valueType)}
+        </p>
+      ) : null}
 
       {step || card.nextActionAt || showAge ? (
         <div className="mt-2 flex items-center justify-between gap-2">

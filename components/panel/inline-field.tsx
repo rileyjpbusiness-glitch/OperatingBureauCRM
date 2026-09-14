@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 export function InlineField({
   value,
   onSave,
-  placeholder = "Not set",
   type = "text",
   className,
   multiline = false,
@@ -20,7 +19,6 @@ export function InlineField({
 }: {
   value: string;
   onSave: (next: string) => void | Promise<void>;
-  placeholder?: string;
   type?: "text" | "email" | "number" | "date";
   className?: string;
   multiline?: boolean;
@@ -40,17 +38,19 @@ export function InlineField({
   }
 
   if (!editing) {
+    // An empty field renders as an empty slot rather than the words "Not set".
+    // Blank already says blank, eight times over on a fresh lead.
     return (
       <button
         type="button"
         onClick={() => setEditing(true)}
         className={cn(
-          "hover:bg-accent/60 w-full truncate rounded px-1 py-0.5 text-left text-[11px] transition-colors",
-          !value && "text-muted-foreground/50",
+          "hover:bg-accent/60 block w-full truncate rounded px-1 py-0.5 text-left text-[11px] transition-colors",
+          !value && "min-h-[1.25rem]",
           className,
         )}
       >
-        {display ?? value ?? ""} {!value && !display ? placeholder : ""}
+        {display ?? value}
       </button>
     );
   }

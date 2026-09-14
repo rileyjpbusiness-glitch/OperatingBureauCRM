@@ -101,6 +101,8 @@ export async function touchVolumeByChannel(options: {
 }
 
 export type TouchTotals = {
+  /** Everything logged in the window, in either direction. */
+  total: number;
   outboundSent: number;
   replies: number;
   positiveReplies: number;
@@ -120,6 +122,7 @@ export async function touchTotalsSince(since: Date): Promise<TouchTotals> {
     .all();
 
   const totals: TouchTotals = {
+    total: 0,
     outboundSent: 0,
     replies: 0,
     positiveReplies: 0,
@@ -127,6 +130,7 @@ export async function touchTotalsSince(since: Date): Promise<TouchTotals> {
   };
 
   for (const row of rows) {
+    totals.total += row.count;
     if (row.direction === "outbound") totals.outboundSent += row.count;
     if (row.outcome === "replied" || row.outcome === "positive_reply") {
       totals.replies += row.count;

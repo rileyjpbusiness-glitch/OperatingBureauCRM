@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Maximize2, TrendingDown } from "lucide-react";
+import { Maximize2 } from "lucide-react";
 
 import type { StageWithMetrics } from "@/lib/repo/types";
 import { formatCentsCompact, formatDays, formatPercent } from "@/lib/format";
@@ -13,13 +13,11 @@ import { cn } from "@/lib/utils";
  */
 export function StageHeader({
   stage,
-  previousStageName,
   isBottleneck,
   showStats,
   sequenceHref,
 }: {
   stage: StageWithMetrics;
-  previousStageName: string | null;
   isBottleneck: boolean;
   showStats: boolean;
   /** Set on the sequence stage, whose header opens the sub-board. */
@@ -27,75 +25,72 @@ export function StageHeader({
 }) {
   const { metrics } = stage;
 
-  const title = (
-    <div className="flex items-center gap-1.5">
-      <span
-        aria-hidden
-        className="size-2 shrink-0 rounded-full"
-        style={{ backgroundColor: stage.color }}
-      />
-      <h2 className="truncate text-[11px] font-semibold tracking-wide uppercase">
-        {stage.name}
-      </h2>
-      {sequenceHref ? (
-        <Maximize2 className="text-muted-foreground size-3 shrink-0" />
-      ) : null}
-      <span className="text-muted-foreground ml-auto font-mono text-[11px] tabular-nums">
-        {metrics.count}
-      </span>
-    </div>
-  );
+  const body = (
+    <>
+      <div className="flex items-center gap-1.5">
+        <span
+          aria-hidden
+          className="size-2 shrink-0 rounded-full"
+          style={{ backgroundColor: stage.color }}
+        />
+        <h2 className="truncate text-[11px] font-semibold tracking-wide uppercase">
+          {stage.name}
+        </h2>
+        {sequenceHref ? (
+          <Maximize2 className="text-muted-foreground/70 size-3 shrink-0" />
+        ) : null}
 
-  return (
-    <header
-      className={cn(
-        "rounded-t-md border-b px-2.5 py-2",
-        isBottleneck ? "bg-warning/5 border-b-warning/40" : "bg-card/40",
-      )}
-      title={
-        isBottleneck ? "Worst converting step in this pipeline" : undefined
-      }
-    >
-      {sequenceHref ? (
-        <Link
-          href={sequenceHref}
-          className="hover:text-foreground block outline-none"
-          title="Open the follow-up sequence"
-        >
-          {title}
-        </Link>
-      ) : (
-        title
-      )}
+        <span className="ml-auto flex shrink-0 items-center gap-1.5">
+          {/* What this column owes you today. No badge when the answer is
+              nothing, so a zero never competes for attention. */}
+          {metrics.dueCount > 0 ? (
+            <span className="bg-destructive/15 text-destructive rounded px-1 py-px font-mono text-[10px] tabular-nums">
+              {metrics.dueCount} due
+            </span>
+          ) : null}
+          <span className="text-muted-foreground font-mono text-[11px] tabular-nums">
+            {metrics.count}
+          </span>
+        </span>
+      </div>
 
       {showStats ? (
         <div className="text-muted-foreground mt-1.5 flex items-center justify-between gap-2 font-mono text-[10px] tabular-nums">
-          <span title="Total monthly recurring value in this stage">
-            {formatCentsCompact(metrics.totalMonthlyRecurringCents)}
-          </span>
+          <span>{formatCentsCompact(metrics.totalMonthlyRecurringCents)}</span>
 
           {metrics.conversionFromPrevious === null ? (
             <span className="text-muted-foreground/40">&mdash;</span>
           ) : (
-            <span
-              title={`${metrics.everReached} of the deals that reached ${previousStageName} went on to reach ${stage.name} or later`}
-              className={cn(
-                "flex items-center gap-0.5",
-                isBottleneck && "text-warning font-semibold",
-              )}
-            >
-              {isBottleneck ? <TrendingDown className="size-3" /> : null}
+            <span className={cn(isBottleneck && "text-warning font-semibold")}>
               {formatPercent(metrics.conversionFromPrevious)}
             </span>
           )}
 
-          <span title="Average time the deals here have been in this stage">
+          <span>
             {metrics.avgDaysInStage === null
               ? "—"
               : formatDays(metrics.avgDaysInStage)}
           </span>
         </div>
       ) : null}
-    </header>
+    </>
   );
+
+  const className = "rounded-t-md border-b px-2.5 py-2 bg-card/40";
+
+  // The whole header is the target, not the icon: a 12px hit area is not a
+  // control anyone finds twice.
+  if (sequenceHref) {
+    return (
+      <Link
+        href={sequenceHref}
+        title="Open the follow-up sequence"
+        className={cn(className, "hover:bg-accent/60 block transition-colors")}
+      >
+        {body}
+      </Link>
+    );
+  }
+
+  return <header className={className}>{body}</header>;
 }

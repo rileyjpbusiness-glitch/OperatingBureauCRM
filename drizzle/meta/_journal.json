@@ -29,6 +29,13 @@
       "when": 1789400858422,
       "tag": "0003_sequence_stage_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789414759033,
+      "tag": "0004_delivery_stale_thresholds",
+      "breakpoints": true
     }
   ]
 }

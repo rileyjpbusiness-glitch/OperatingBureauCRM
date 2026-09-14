@@ -69,12 +69,7 @@ export function BoardClient({
     [board.pipeline.slug],
   );
 
-  const funnel = board.stages.filter((stage) => !stage.isLost);
-
   const columns: KanbanColumn[] = board.stages.map((stage) => {
-    const funnelIndex = funnel.findIndex((candidate) => candidate.id === stage.id);
-    const previous =
-      funnelIndex > 0 ? (funnel[funnelIndex - 1]?.name ?? null) : null;
     const isBottleneck = board.bottleneckStageId === stage.id;
     const isTerminal = stage.isWon || stage.isLost;
 
@@ -84,7 +79,6 @@ export function BoardClient({
       railCount: stage.metrics.count,
       collapsed: isTerminal && collapsed.includes(stage.id),
       onRailClick: () => toggle(stage.id),
-      accentClassName: isBottleneck ? "border-warning/40" : undefined,
       cards: board.cardsByStage[stage.id] ?? [],
       header: (
         <div
@@ -97,7 +91,6 @@ export function BoardClient({
         >
           <StageHeader
             stage={stage}
-            previousStageName={previous}
             isBottleneck={isBottleneck}
             showStats={showStats}
             {...(stage.isSequence

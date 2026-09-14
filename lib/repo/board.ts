@@ -1,3 +1,4 @@
+import { isDueOrOverdue, isDueToday, isOverdue } from "@/lib/dates";
 import {
   SEQUENCE_STEPS,
   SEQUENCE_STEP_LABELS,
@@ -96,15 +97,37 @@ export async function getSequenceBoard(
       (card.stageId === stage.id || card.sequenceStep === "no_answer"),
   );
 
+  /**
+   * What you owe a message to comes first: already past due, then due today,
+   * then everything else by date. A column you read top to bottom is a column
+   * you can work top to bottom.
+   */
+  const urgency = (card: DealCard): number => {
+    if (isOverdue(card.nextActionAt, now)) return 0;
+    if (isDueToday(card.nextActionAt, now)) return 1;
+    return 2;
+  };
+
   const columns = SEQUENCE_STEPS.map((step) => ({
     step,
     label: SEQUENCE_STEP_LABELS[step],
     cards: inSequence
       .filter((card) => card.sequenceStep === step)
-      .sort((a, b) => a.position - b.position),
+      .sort((a, b) => {
+        const byUrgency = urgency(a) - urgency(b);
+        if (byUrgency !== 0) return byUrgency;
+        const aDue = a.nextActionAt?.getTime() ?? Number.POSITIVE_INFINITY;
+        const bDue = b.nextActionAt?.getTime() ?? Number.POSITIVE_INFINITY;
+        if (aDue !== bDue) return aDue - bDue;
+        return a.position - b.position;
+      }),
   }));
 
-  return { pipeline, stage, columns };
+  const dueCount = inSequence.filter(
+    (card) => card.status === "open" && isDueOrOverdue(card.nextActionAt, now),
+  ).length;
+
+  return { pipeline, stage, columns, dueCount };
 }
 
 /** Everything the detail panel renders, in one round trip. */

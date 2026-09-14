@@ -99,6 +99,8 @@ export type StageMetrics = {
   stageId: string;
   /** Deals sitting in this stage right now, after filters. */
   count: number;
+  /** Of those, how many are owed a follow-up today or are already past due. */
+  dueCount: number;
   totalMonthlyRecurringCents: number;
   /** Mean age of the deals currently in the stage. Null when the stage is empty. */
   avgDaysInStage: number | null;
@@ -222,6 +224,8 @@ export type SequenceBoard = {
   pipeline: Pipeline;
   stage: Stage;
   columns: SequenceColumn[];
+  /** Deals in the cadence owed a follow-up today or already past due. */
+  dueCount: number;
 };
 
 /**

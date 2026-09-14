@@ -64,3 +64,18 @@ database.
 7. Contacts table and CSV import
 8. Dashboard
 9. Stage management
+
+## Requirements
+
+- Node 22 or newer (`better-sqlite3` 13 requires it; Node 26 is fine)
+- No other system dependencies. `better-sqlite3` ships N-API prebuilds, so it
+  does not compile from source and Xcode command line tools are not needed.
+
+### Why package.json has an `overrides` block
+
+`drizzle-kit` still depends on the deprecated `@esbuild-kit/esm-loader`, which
+pins its own nested esbuild 0.18. That prebuilt binary fails to execute on
+current macOS with `Unknown system error -88` (EBADARCH), which breaks
+`npm install` outright. The override pins that one nested copy to esbuild 0.25,
+which `drizzle-kit` already depends on directly. `tsx` keeps its own esbuild 0.28
+untouched. Remove the override once drizzle-kit drops `@esbuild-kit`.

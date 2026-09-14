@@ -1,6 +1,9 @@
+import {
+  daysBetween,
+  formatDate,
+  formatDateTime as formatZonedDateTime,
+} from "@/lib/dates";
 import type { Owner, ValueType } from "@/lib/db/enums";
-
-const MS_PER_DAY = 86_400_000;
 
 /**
  * Column headers are 280px wide and carry four numbers, so money there is
@@ -74,28 +77,20 @@ export function contactName(contact: {
  * Two formats, not four. Inside a week either way it is relative, because that
  * is the window you act on; beyond it, an absolute date, because "in 23d" is
  * not something anyone reads as a date.
+ *
+ * "Today" means today in the business timezone, not in the timezone of whoever
+ * is looking, so Riley and Kavi read the same card the same way.
  */
 export function formatDueDate(date: Date, now: Date = new Date()): string {
-  const startOf = (value: Date) =>
-    new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
-  const days = Math.round((startOf(date) - startOf(now)) / MS_PER_DAY);
+  const days = daysBetween(now, date);
 
   if (days === 0) return "today";
   if (days < 0) {
-    return days >= -7
-      ? `${Math.abs(days)}d overdue`
-      : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return days >= -7 ? `${Math.abs(days)}d overdue` : formatDate(date);
   }
-  return days <= 7
-    ? `in ${days}d`
-    : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return days <= 7 ? `in ${days}d` : formatDate(date);
 }
 
 export function formatDateTime(date: Date): string {
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatZonedDateTime(date);
 }

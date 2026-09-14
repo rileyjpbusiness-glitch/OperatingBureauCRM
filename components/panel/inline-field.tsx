@@ -46,7 +46,9 @@ export function InlineField({
         onClick={() => setEditing(true)}
         className={cn(
           "hover:bg-accent/60 block w-full truncate rounded px-1 py-0.5 text-left text-[11px] transition-colors",
-          !value && "min-h-[1.25rem]",
+          // An empty field gets a faint dashed rule: enough to read as
+          // fillable rather than broken, without a word of placeholder text.
+          !value && "border-muted-foreground/25 min-h-[1.25rem] border-b border-dashed",
           className,
         )}
       >

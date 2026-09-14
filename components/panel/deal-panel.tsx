@@ -8,6 +8,7 @@ import {
   updateContactAction,
   updateDealAction,
 } from "@/lib/actions";
+import { fromDateInputValue, toDateInputValue } from "@/lib/dates";
 import { OWNERS, SOURCES, VALUE_TYPES, type Owner } from "@/lib/db/enums";
 import type { DealDetail } from "@/lib/repo/types";
 import {
@@ -68,9 +69,7 @@ function Row({
 }
 
 function toDateInput(date: Date | null): string {
-  if (!date) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return date ? toDateInputValue(date) : "";
 }
 
 export function DealPanel({ detail }: { detail: DealDetail | null }) {
@@ -278,7 +277,10 @@ export function DealPanel({ detail }: { detail: DealDetail | null }) {
                       : {})}
                     onSave={(value) =>
                       saveDeal({
-                        nextActionAt: value ? new Date(value) : null,
+                        // Parsed as a business-timezone date. `new Date(value)`
+                        // would read it as UTC midnight, which is the evening
+                        // before in New York.
+                        nextActionAt: value ? fromDateInputValue(value) : null,
                       })
                     }
                   />

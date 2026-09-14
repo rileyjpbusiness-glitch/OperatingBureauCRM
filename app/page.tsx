@@ -8,6 +8,7 @@ import {
   formatCents,
   formatDealValue,
   formatDueDate,
+  formatPercent,
 } from "@/lib/format";
 import { getDashboard, listPipelines, listStages } from "@/lib/repo";
 import { cn } from "@/lib/utils";
@@ -16,9 +17,17 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Bureau" };
 
-function Tile({ label, value }: { label: string; value: string }) {
+function Tile({
+  label,
+  value,
+  title,
+}: {
+  label: string;
+  value: string;
+  title?: string;
+}) {
   return (
-    <div className="bg-card/40 rounded-md border px-3 py-2.5">
+    <div className="bg-card/40 rounded-md border px-3 py-2.5" title={title}>
       <p className="text-muted-foreground text-[10px] tracking-wide uppercase">
         {label}
       </p>
@@ -48,7 +57,7 @@ export default async function DashboardPage() {
   return (
     <AppShell pipelines={pipelines} activeSlug="">
       <div className="scrollbar-thin h-full overflow-y-auto p-3">
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
           {/* Touches, not new rows: adding a lead to a database is not
               work, messaging someone is, and it drives every other number. */}
           <Tile
@@ -59,6 +68,15 @@ export default async function DashboardPage() {
           <Tile
             label="Calls booked this week"
             value={String(dashboard.callsBookedThisWeek)}
+          />
+          <Tile
+            label="Close rate (30d)"
+            value={
+              dashboard.closeRate.rate === null
+                ? "—"
+                : formatPercent(dashboard.closeRate.rate)
+            }
+            title={`${dashboard.closeRate.won} of ${dashboard.closeRate.reached} deals that reached the closing stage in the last 30 days were won`}
           />
           <Tile
             label="Open pipeline MRR"

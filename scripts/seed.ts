@@ -4,6 +4,7 @@ import type {
   TouchChannel,
   TouchOutcome,
 } from "../lib/db/enums";
+import { atZonedTime } from "../lib/dates";
 import { DB_PATH } from "../lib/db/path";
 import {
   DELIVERY_STAGES,
@@ -65,11 +66,13 @@ function daysBefore(reference: Date, days: number, jitterHours = 0): Date {
   return new Date(reference.getTime() - days * MS_PER_DAY + jitter * MS_PER_HOUR);
 }
 
-/** Business hours make the history read like a person did the work. */
+/**
+ * Business hours make the history read like a person did the work. Business
+ * hours in New York specifically, so the seed produces the same history
+ * whatever timezone the machine running it is set to.
+ */
 function atWorkingHour(date: Date): Date {
-  const copy = new Date(date);
-  copy.setHours(randomInt(8, 18), randomInt(0, 59), randomInt(0, 59), 0);
-  return copy;
+  return atZonedTime(date, randomInt(8, 18), randomInt(0, 59), randomInt(0, 59));
 }
 
 function dollars(amount: number): number {

@@ -132,6 +132,11 @@ the same treatment, with tight thresholds (Onboarding 3 days, Building 7, Live
 line at all rather than claiming to be worth $0, and empty fields in the detail
 panel are empty slots rather than eight repetitions of "Not set".
 
+**Close rate reads off the same log as the column headers.** Of the deals that
+reached the closing stage in the last thirty days, how many were won. A deal
+that reached Won counts as having reached Closing, so winning one can never make
+the rate look worse than never having the conversation.
+
 **The bottleneck is one coloured number.** The worst converting step shows its
 rate in amber when Stats is on, and nothing else changes. Won is excluded from
 the running: Closing to Won is a real step, but Won is an outcome rather than a
@@ -148,6 +153,24 @@ deal there.
 but is reassignable, so delivery can sit with a different operator than the one
 who sourced the lead. The board, the cards and the owner filter all read the
 deal's owner.
+
+### One timezone, not the viewer's
+
+Every date decision resolves in `America/New_York`, set once as `TIME_ZONE` in
+`lib/dates.ts`. Two operators in different countries have to agree on what
+"today", "overdue" and "this week" mean, or the same board shows them different
+work.
+
+Day and week boundaries, the due and overdue comparisons, the rolling thirty day
+window, the seeded history, and every rendered date and timestamp all resolve
+through that module. Day boundaries are built from `Intl` offsets rather than
+millisecond arithmetic, so the two days a year the clocks move are 23 and 25
+hours long rather than silently 24. `npm run check` asserts that, and the whole
+suite passes identically whatever `TZ` the machine is set to.
+
+Days-in-stage is deliberately left as elapsed duration rather than a calendar
+count. It is a measure of how long something has been sitting, which is the same
+number everywhere by construction.
 
 ### Formatting rules
 

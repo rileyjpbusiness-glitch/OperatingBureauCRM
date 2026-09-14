@@ -27,8 +27,51 @@ function check(label: string, condition: boolean, detail?: unknown) {
   }
 }
 
+let dates: typeof import("../lib/dates");
+
+function checkTimezone(): void {
+  const iso = (d: Date) => d.toISOString();
+
+  // Standard time is UTC-5, daylight time UTC-4.
+  check("day starts at 05:00Z in winter",
+    iso(dates.startOfDay(new Date("2026-01-15T18:30:00Z"))) === "2026-01-15T05:00:00.000Z");
+  check("day starts at 04:00Z in summer",
+    iso(dates.startOfDay(new Date("2026-07-15T18:30:00Z"))) === "2026-07-15T04:00:00.000Z");
+  check("an instant past UTC midnight keeps the business day's date",
+    iso(dates.startOfDay(new Date("2026-07-16T03:30:00Z"))) === "2026-07-15T04:00:00.000Z");
+
+  // The clocks move at 2am, so those two days are 23 and 25 hours long.
+  const spring = new Date("2026-03-08T12:00:00Z");
+  const fall = new Date("2026-11-01T12:00:00Z");
+  check("the spring-forward day is 23 hours",
+    (dates.endOfDay(spring).getTime() - dates.startOfDay(spring).getTime() + 1) / 3_600_000 === 23);
+  check("the fall-back day is 25 hours",
+    (dates.endOfDay(fall).getTime() - dates.startOfDay(fall).getTime() + 1) / 3_600_000 === 25);
+  check("day arithmetic crosses a transition intact",
+    iso(dates.startOfDaysAgo(new Date("2026-03-10T12:00:00Z"), 7)) === "2026-03-03T05:00:00.000Z");
+
+  const now = new Date("2026-09-14T12:00:00Z");
+  check("later today counts as due", dates.isDueOrOverdue(new Date("2026-09-14T23:00:00Z"), now));
+  check("tomorrow does not count as due", !dates.isDueOrOverdue(new Date("2026-09-15T13:00:00Z"), now));
+  // 02:00Z on the 15th is 10pm on the 14th in New York.
+  check("a late-evening instant is still today",
+    dates.isDueOrOverdue(new Date("2026-09-15T02:00:00Z"), now));
+
+  check("a date input round trips",
+    dates.toDateInputValue(dates.fromDateInputValue("2026-09-20")!) === "2026-09-20");
+  check("a date input parses to business-timezone midnight, not UTC",
+    iso(dates.fromDateInputValue("2026-09-20")!) === "2026-09-20T04:00:00.000Z");
+  check("dates render in the business timezone",
+    dates.formatDate(new Date("2026-09-22T02:00:00Z")) === "Sep 21");
+  check("timestamps render in the business timezone",
+    dates.formatDateTime(new Date("2026-09-21T13:00:00Z")) === "Sep 21, 9:00 AM");
+}
+
 async function main() {
   const repo = await import("../lib/repo");
+  dates = await import("../lib/dates");
+
+  checkTimezone();
 
   const pipeline = await repo.createPipeline({ name: "Test", slug: "test" });
   const second = await repo.createPipeline({ name: "Next", slug: "next" });

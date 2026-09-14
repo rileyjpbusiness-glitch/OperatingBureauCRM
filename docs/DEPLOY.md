@@ -191,6 +191,15 @@ to the login screen instead of the app. Reload the page, sign in again, redo the
 action. This is the cost of having no auth inside the app, and it is a fair
 trade at two users.
 
+**Kavi says he never gets a code.** Check the allowlist for a typo in his
+address before you look at his spam folder. By design Access shows the same "A
+code has been emailed to you" screen whether or not the address is allowed, and
+sends nothing to an address that is not, so a mistyped entry looks exactly like
+a mail delivery problem. The codes also expire ten minutes after they are
+requested, and some corporate mail scanners burn a code by following the link
+first; "This One-Time PIN has already been used" means that happened, and
+requesting a new one works.
+
 **The site 502s.** Usually the machine restarted and cloudflared has not
 reconnected yet. `fly logs` will say. The entrypoint deliberately kills the
 machine if either the app or the tunnel dies, rather than leaving a half-running

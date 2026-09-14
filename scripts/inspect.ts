@@ -16,8 +16,7 @@ async function main(): Promise<void> {
     console.log(
       "stage".padEnd(26) +
         "n".padStart(3) +
-        "acv".padStart(11) +
-        "mrr".padStart(9) +
+        "mrr".padStart(10) +
         "conv".padStart(7) +
         "avgD".padStart(6) +
         "reach".padStart(7) +
@@ -35,8 +34,7 @@ async function main(): Promise<void> {
       console.log(
         stage.name.padEnd(26) +
           String(m.count).padStart(3) +
-          `$${(m.totalAnnualizedCents / 100).toLocaleString()}`.padStart(11) +
-          `$${(m.totalMonthlyRecurringCents / 100).toLocaleString()}`.padStart(9) +
+          `$${(m.totalMonthlyRecurringCents / 100).toLocaleString()}`.padStart(10) +
           (m.conversionFromPrevious === null
             ? "-"
             : `${Math.round(m.conversionFromPrevious * 100)}%`
@@ -58,6 +56,12 @@ async function main(): Promise<void> {
   }, {});
   console.log("\nstaleness:", staleness);
   console.log("overdue next actions:", all.filter((c) => c.nextActionOverdue).length);
+
+  const steps = all.reduce<Record<string, number>>((acc, card) => {
+    if (card.sequenceStep) acc[card.sequenceStep] = (acc[card.sequenceStep] ?? 0) + 1;
+    return acc;
+  }, {});
+  console.log("sequence steps:", steps);
 
   const sample = all.find((c) => c.contact.firstName === "Dane");
   if (sample) {

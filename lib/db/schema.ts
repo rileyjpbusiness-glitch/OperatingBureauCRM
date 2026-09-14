@@ -13,6 +13,7 @@ import {
   ACTIVITY_TYPES,
   DEAL_STATUSES,
   OWNERS,
+  SEQUENCE_STEPS,
   SOURCES,
   TOUCH_CHANNELS,
   TOUCH_DIRECTIONS,
@@ -70,6 +71,14 @@ export const stages = sqliteTable(
     staleAfterDays: integer("stale_after_days").default(7),
     isWon: integer("is_won", { mode: "boolean" }).notNull().default(false),
     isLost: integer("is_lost", { mode: "boolean" }).notNull().default(false),
+    /**
+     * Marks the stage that runs the follow-up cadence. A flag rather than a
+     * name match, so renaming the column in the UI cannot quietly detach the
+     * sub-board from it.
+     */
+    isSequence: integer("is_sequence", { mode: "boolean" })
+      .notNull()
+      .default(false),
   },
   (t) => [index("stages_pipeline_position_idx").on(t.pipelineId, t.position)],
 );
@@ -132,6 +141,12 @@ export const deals = sqliteTable(
     owner: text("owner", { enum: OWNERS }).notNull(),
     nextAction: text("next_action"),
     nextActionAt: integer("next_action_at", { mode: "timestamp_ms" }),
+    /**
+     * Position in the follow-up cadence. Non-null only while the deal is in the
+     * In Sequence stage, with the single exception of no_answer, which the deal
+     * keeps after being marked lost so the sub-board can still show it.
+     */
+    sequenceStep: text("sequence_step", { enum: SEQUENCE_STEPS }),
     /** Sort key within a stage. Float so a card can be dropped between two. */
     position: real("position").notNull(),
     /**
@@ -151,6 +166,7 @@ export const deals = sqliteTable(
     index("deals_status_idx").on(t.status),
     index("deals_next_action_idx").on(t.nextActionAt),
     index("deals_owner_idx").on(t.owner),
+    index("deals_sequence_step_idx").on(t.sequenceStep),
   ],
 );
 

@@ -8,6 +8,27 @@
       "when": 1789346604811,
       "tag": "0000_skinny_white_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789400725258,
+      "tag": "0001_messy_makkari",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789400746754,
+      "tag": "0002_restructure_stages",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789400858422,
+      "tag": "0003_sequence_stage_flag",
+      "breakpoints": true
     }
   ]
 }

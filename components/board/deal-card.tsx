@@ -1,36 +1,41 @@
-import { CalendarClock } from "lucide-react";
-
-import type { DealCard as DealCardModel, Staleness } from "@/lib/repo/types";
-import { contactName, formatDealValue, formatDueDate } from "@/lib/format";
+import { SEQUENCE_STEP_LABELS } from "@/lib/db/enums";
+import type { DealCard as DealCardModel } from "@/lib/repo/types";
+import {
+  contactName,
+  formatDealValue,
+  formatDueDate,
+  isEstimatedValue,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 import { OwnerChip } from "./owner-chip";
 import { SOURCE_LABELS, SourceIcon } from "./source-icon";
 
 /**
- * Amber once a deal has sat longer than its stage allows, red past double
- * that. Stages with no threshold never colour.
+ * Four lines, and at most one badge.
+ *
+ * The badge answers "what do I owe this person next" first: the next action
+ * date if there is one. Only when there is nothing scheduled does age take the
+ * slot, and only once it is past the stage's threshold. Two badges on every
+ * card was noise.
  */
-const AGE_TONE: Record<Staleness, string> = {
-  fresh: "bg-secondary text-muted-foreground",
-  stale: "bg-warning/15 text-warning",
-  critical: "bg-destructive/15 text-destructive",
-};
-
-const AGE_TITLE: Record<Staleness, string> = {
-  fresh: "Days in this stage",
-  stale: "Past this stage's stale threshold",
-  critical: "More than double this stage's stale threshold",
-};
-
-export function DealCard({ card }: { card: DealCardModel }) {
+export function DealCard({
+  card,
+  showStep = true,
+}: {
+  card: DealCardModel;
+  /** Off on the sub-board, where the column already names the step. */
+  showStep?: boolean;
+}) {
+  const step = showStep ? card.sequenceStep : null;
   const org = card.contact.company ?? card.contact.instagramHandle;
+  const showAge = card.nextActionAt === null && card.staleness !== "fresh";
 
   return (
     <article
       className={cn(
-        "bg-card hover:border-ring/60 group rounded-md border px-2.5 py-2 transition-colors",
-        card.status === "lost" && "opacity-60",
+        "bg-card hover:border-ring/60 rounded-md border px-2.5 py-2 transition-colors",
+        card.status === "lost" && "opacity-55",
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -50,36 +55,57 @@ export function DealCard({ card }: { card: DealCardModel }) {
         </p>
       ) : null}
 
-      <p className="mt-1.5 font-mono text-[11px] tabular-nums">
+      <p
+        className={cn(
+          "mt-1.5 font-mono text-[11px] tabular-nums",
+          // A rev-share figure is a guess, and muting it says so without
+          // needing a suffix.
+          isEstimatedValue(card.valueType) && "text-muted-foreground",
+        )}
+        title={
+          isEstimatedValue(card.valueType) ? "Rev-share estimate" : undefined
+        }
+      >
         {formatDealValue(card.value, card.valueType)}
       </p>
 
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <span
-          title={AGE_TITLE[card.staleness]}
-          className={cn(
-            "rounded px-1 py-px font-mono text-[10px] tabular-nums",
-            AGE_TONE[card.staleness],
+      {step || card.nextActionAt || showAge ? (
+        <div className="mt-2 flex items-center justify-between gap-2">
+          {step ? (
+            <span className="bg-secondary text-muted-foreground rounded px-1 py-px text-[10px]">
+              {SEQUENCE_STEP_LABELS[step]}
+            </span>
+          ) : (
+            <span />
           )}
-        >
-          {card.daysInStage}d
-        </span>
 
-        {card.nextActionAt ? (
-          <span
-            title={card.nextAction ?? "Next action"}
-            className={cn(
-              "flex items-center gap-1 text-[10px]",
-              card.nextActionOverdue
-                ? "text-destructive"
-                : "text-muted-foreground",
-            )}
-          >
-            <CalendarClock className="size-3" />
-            {formatDueDate(card.nextActionAt)}
-          </span>
-        ) : null}
-      </div>
+          {card.nextActionAt ? (
+            <span
+              title={card.nextAction ?? "Next action"}
+              className={cn(
+                "shrink-0 text-[10px]",
+                card.nextActionOverdue
+                  ? "text-destructive"
+                  : "text-muted-foreground",
+              )}
+            >
+              {formatDueDate(card.nextActionAt)}
+            </span>
+          ) : showAge ? (
+            <span
+              title="Past this stage's stale threshold"
+              className={cn(
+                "shrink-0 rounded px-1 py-px font-mono text-[10px] tabular-nums",
+                card.staleness === "critical"
+                  ? "bg-destructive/15 text-destructive"
+                  : "bg-warning/15 text-warning",
+              )}
+            >
+              {card.daysInStage}d
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 }

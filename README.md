@@ -35,10 +35,12 @@ created on first run and migrations apply automatically, so a fresh clone can go
 straight to `npm run dev`. `data/` is gitignored, so the database never leaves
 your machine and is never committed.
 
-`npm run seed` deletes that file and rebuilds it from scratch: two pipelines,
-their stages, 30 leads, and the full history behind them. It uses a fixed random
-seed, so reseeding twice gives you the identical database. Set `BUREAU_DB_PATH`
-to point any command at a different file.
+`npm run seed` empties every table and rebuilds it: two pipelines, their stages,
+30 leads, and the full history behind them. It empties rather than deleting the
+file on purpose, so a dev server that is already running picks the new data up
+without a restart. It uses a fixed random seed, so reseeding twice gives you the
+identical database. Set `BUREAU_DB_PATH` to point any command at a different
+file.
 
 ## Stack
 
@@ -61,43 +63,11 @@ to point any command at a different file.
   app makes no external requests; this turns off Next.js's own build telemetry
   too. You can also run `npx next telemetry disable` once per machine.
 
-## Build phases
+## Still to build
 
-1. Scaffold, dependencies, Tailwind, dark theme, blank page rendering - **done**
-2. Drizzle schema, migrations, repo layer, seed script
-3. Pipeline board, read-only, with stage math in the column headers - **done**
-4. Drag and drop with persistence and activity logging
-5. Deal detail panel (Notes, Activity, Touches, Details)
-6. Search, filters, quick-add, keyboard shortcuts
-7. Contacts table and CSV import
-8. Dashboard
-9. Stage management
-
-## Requirements
-
-- Node 22 or newer (`better-sqlite3` 13 requires it; Node 26 is fine)
-- No other system dependencies. `better-sqlite3` ships N-API prebuilds, so it
-  does not compile from source and Xcode command line tools are not needed.
-
-### Why package.json has an `overrides` block
-
-`drizzle-kit` still depends on the deprecated `@esbuild-kit/esm-loader`, which
-pins its own nested esbuild 0.18. That prebuilt binary fails to execute on
-current macOS with `Unknown system error -88` (EBADARCH), which breaks
-`npm install` outright. The override pins that one nested copy to esbuild 0.25,
-which `drizzle-kit` already depends on directly. `tsx` keeps its own esbuild 0.28
-untouched. Remove the override once drizzle-kit drops `@esbuild-kit`.
-
-## Screens so far
-
-`/pipeline/[slug]` is the board. Two pipelines, switchable from the top bar.
-`/` redirects to the first pipeline until the dashboard replaces it in phase 8.
-
-The board scrolls horizontally, each column scrolls vertically, and the page
-itself never scrolls. Every number in a column header explains itself on hover,
-including where a rate is withheld and why, because a metric you cannot
-interrogate is one you stop trusting. The worst converting step in the pipeline
-carries an amber border and a falling arrow on its rate.
+Contacts table and CSV import, and stage management in the UI (rename, reorder,
+recolour, add, delete). The repository layer already implements all of it; only
+the screens are missing.
 
 ## How the data model works
 
@@ -138,16 +108,23 @@ dropping a deal into Lost does not retroactively credit it with reaching
 everything before it. A rate is only shown once the previous stage has at least
 five deals behind it; below that it would be noise.
 
-**Column totals annualize.** A $3k/mo retainer and a $3k one-off are not the
-same number, so the header's large figure is annualized contract value: monthly
-recurring and rev-share estimates multiplied by twelve, one-time amounts as
-they are. Total MRR sits underneath it as the smaller second line. Cards still
-show the raw value and its type. The conversion lives in `lib/repo/money.ts` and
-nowhere else, including not in SQL.
+**Column totals are MRR.** Annualized contract value was dropped: it was the
+largest number on the board and it was only MRR times twelve. One-time deals
+contribute nothing to it, which is what the figure is supposed to mean. The
+conversion lives in `lib/repo/money.ts` and nowhere else, including not in SQL.
+
+**The sequence step is a column on deals, not a stage.** `deals.sequence_step`
+is non-null only while a deal is in the stage flagged `is_sequence`. Entering
+that stage sets it to day one, leaving clears it, and every change writes an
+activity row. The one exception is `no_answer`, which the deal keeps after
+moving to Lost so the sub-board can still show it.
 
 **Average days in stage measures the deals sitting there now.** That is the
-number that tells you where work is piling up today, and it matches what the
-cards show.
+number that tells you where work is piling up today.
+
+**Cards carry one badge, not two.** It answers what you owe this person next:
+the next action date if one is set. Only when nothing is scheduled does age take
+the slot, and only once it is past the stage's own threshold.
 
 **Winning a deal opens the next pipeline's version of it.** Moving a deal into a
 stage marked `is_won` sets its status, logs it, and creates a fresh open deal for
@@ -161,12 +138,20 @@ but is reassignable, so delivery can sit with a different operator than the one
 who sourced the lead. The board, the cards and the owner filter all read the
 deal's owner.
 
+### Formatting rules
+
+Values: `$2,000/mo`, `$6,500 once`, and rev-share estimates as `$8,500/mo` in a
+muted colour rather than an `est.` suffix, so the shape of the number never
+changes.
+
+Dates: relative inside a week either direction (`in 3d`, `today`,
+`4d overdue`), absolute beyond it (`Sep 21`). No `tomorrow`, no `yesterday`.
+
 ### A caveat on the seeded numbers
 
 Thirty leads cannot show a realistic cold outbound funnel and still put cards in
 every column. Real cold DM reply rates are single digits; at that rate a 30-lead
 seed would leave everything past Replied empty. The seeded funnel therefore
-drops off gently, roughly 90% per step early on with the sharp fall at Replied,
-which makes the board legible but flatters the conversion rates. If you would
-rather see numbers that look like real outbound, the fix is a larger seed, not a
-different calculation.
+drops off gently, with the sharp falls at Replied and at Won, which makes the
+board legible but flatters the rates. If you would rather see numbers that look
+like real outbound, the fix is a larger seed, not a different calculation.

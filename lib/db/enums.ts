@@ -62,6 +62,7 @@ export const ACTIVITY_TYPES = [
   "stage_changed",
   "note_added",
   "touch_logged",
+  "sequence_step_changed",
   "value_changed",
   "won",
   "lost",
@@ -74,3 +75,40 @@ export type ActivityType = (typeof ACTIVITY_TYPES)[number];
  */
 export const TOUCH_ORIGINS = ["manual", "sync", "import"] as const;
 export type TouchOrigin = (typeof TOUCH_ORIGINS)[number];
+
+/**
+ * Where a deal sits in the follow-up cadence: one touch a day for five days,
+ * then one a week for four weeks, then it is done. Only meaningful while the
+ * deal is in the In Sequence stage, and null everywhere else.
+ *
+ * `no_answer` is the exception that survives leaving the stage: the deal moves
+ * to Lost but stays visible, dimmed, in the sub-board's last column so the
+ * size of the pile is legible.
+ */
+export const SEQUENCE_STEPS = [
+  "day_1",
+  "day_2",
+  "day_3",
+  "day_4",
+  "day_5",
+  "week_2",
+  "week_3",
+  "week_4",
+  "no_answer",
+] as const;
+export type SequenceStep = (typeof SEQUENCE_STEPS)[number];
+
+export const SEQUENCE_STEP_LABELS: Record<SequenceStep, string> = {
+  day_1: "Day 1",
+  day_2: "Day 2",
+  day_3: "Day 3",
+  day_4: "Day 4",
+  day_5: "Day 5",
+  week_2: "Week 2",
+  week_3: "Week 3",
+  week_4: "Week 4",
+  no_answer: "No Answer",
+};
+
+/** The step a deal lands on when it first enters the sequence. */
+export const FIRST_SEQUENCE_STEP: SequenceStep = "day_1";

@@ -1,5 +1,6 @@
 import type {
   ActivityType,
+  SequenceStep,
   DealStatus,
   Owner,
   Source,
@@ -27,6 +28,8 @@ export type Stage = {
   staleAfterDays: number | null;
   isWon: boolean;
   isLost: boolean;
+  /** True for the single stage that runs the follow-up cadence. */
+  isSequence: boolean;
 };
 
 export type Tag = {
@@ -67,6 +70,8 @@ export type Deal = {
   owner: Owner;
   nextAction: string | null;
   nextActionAt: Date | null;
+  /** Non-null only inside the sequence stage, plus no_answer after it leaves. */
+  sequenceStep: SequenceStep | null;
   position: number;
   stageEnteredAt: Date;
   createdAt: Date;
@@ -94,7 +99,6 @@ export type StageMetrics = {
   stageId: string;
   /** Deals sitting in this stage right now, after filters. */
   count: number;
-  totalAnnualizedCents: number;
   totalMonthlyRecurringCents: number;
   /** Mean age of the deals currently in the stage. Null when the stage is empty. */
   avgDaysInStage: number | null;
@@ -205,4 +209,37 @@ export type ContactListRow = Contact & {
 export type ContactListResult = {
   rows: ContactListRow[];
   total: number;
+};
+
+/** One column of the follow-up sub-board. */
+export type SequenceColumn = {
+  step: SequenceStep;
+  label: string;
+  cards: DealCard[];
+};
+
+export type SequenceBoard = {
+  pipeline: Pipeline;
+  stage: Stage;
+  columns: SequenceColumn[];
+};
+
+/**
+ * The detail panel's History tab: auto-logged events and manually logged
+ * touches in one stream, distinguishable but not separated.
+ */
+export type HistoryEntry =
+  | { kind: "activity"; at: Date; activity: Activity }
+  | { kind: "touch"; at: Date; touch: Touch };
+
+export type DealDetail = {
+  card: DealCard;
+  stage: Stage;
+  pipeline: Pipeline;
+  /** Every stage in the deal's pipeline, for the stage picker. */
+  stages: Stage[];
+  notes: Note[];
+  history: HistoryEntry[];
+  tasks: Task[];
+  allTags: Tag[];
 };

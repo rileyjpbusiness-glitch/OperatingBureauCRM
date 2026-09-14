@@ -1,0 +1,421 @@
+"use client";
+
+import * as React from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  pointerWithin,
+  rectIntersection,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type CollisionDetection,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+import type { DealCard } from "@/lib/repo/types";
+import { cn } from "@/lib/utils";
+
+/**
+ * Rect-based detection compares the dragged card's box against each target, so
+ * a 240px card can never "reach" a 48px rail or a 36px banner however precisely
+ * you aim. Going by the pointer first makes small targets hittable, with rect
+ * intersection as the fallback for when the cursor is over nothing.
+ */
+const collisionDetection: CollisionDetection = (args) => {
+  const byPointer = pointerWithin(args);
+  return byPointer.length > 0 ? byPointer : rectIntersection(args);
+};
+
+export type KanbanColumn = {
+  id: string;
+  header: React.ReactNode;
+  cards: DealCard[];
+  /** Renders as a narrow vertical rail instead of a column. */
+  collapsed?: boolean;
+  /** Shown along the rail when collapsed. */
+  railLabel?: string;
+  railCount?: number;
+  onRailClick?: () => void;
+  accentClassName?: string;
+  dimmed?: boolean;
+};
+
+/**
+ * A full-width drop target above the columns. The sub-board uses it to pull a
+ * deal out of the cadence and into Replied in one gesture.
+ */
+export type KanbanBanner = {
+  id: string;
+  label: string;
+};
+
+function SortableCard({
+  card,
+  children,
+  onOpen,
+}: {
+  card: DealCard;
+  children: React.ReactNode;
+  onOpen: (dealId: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: card.id, data: { cardId: card.id } });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn("touch-none", isDragging && "opacity-40")}
+      {...attributes}
+      {...listeners}
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(card.id)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen(card.id);
+        }
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ColumnBody({
+  column,
+  renderCard,
+  onOpen,
+}: {
+  column: KanbanColumn;
+  renderCard: (card: DealCard) => React.ReactNode;
+  onOpen: (dealId: string) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: column.id,
+    data: { columnId: column.id },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "scrollbar-thin flex-1 space-y-1.5 overflow-y-auto p-1.5 transition-colors",
+        isOver && "bg-primary/5",
+      )}
+    >
+      <SortableContext
+        items={column.cards.map((card) => card.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {column.cards.length === 0 ? (
+          <p className="text-muted-foreground/40 px-1 py-3 text-center text-[11px]">
+            Empty
+          </p>
+        ) : (
+          column.cards.map((card) => (
+            <SortableCard key={card.id} card={card} onOpen={onOpen}>
+              {renderCard(card)}
+            </SortableCard>
+          ))
+        )}
+      </SortableContext>
+    </div>
+  );
+}
+
+function Rail({ column }: { column: KanbanColumn }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: column.id,
+    data: { columnId: column.id },
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      onClick={column.onRailClick}
+      title={`Expand ${column.railLabel ?? ""}`}
+      className={cn(
+        "bg-card/20 hover:bg-card/50 flex h-full w-12 shrink-0 cursor-pointer flex-col items-center gap-2 rounded-md border py-2 transition-colors",
+        column.accentClassName,
+        isOver && "bg-primary/10 border-primary/50",
+      )}
+    >
+      <span className="text-muted-foreground font-mono text-[11px] tabular-nums">
+        {column.railCount}
+      </span>
+      <span
+        className="text-muted-foreground text-[10px] font-semibold tracking-widest uppercase"
+        style={{ writingMode: "vertical-rl" }}
+      >
+        {column.railLabel}
+      </span>
+    </button>
+  );
+}
+
+function Banner({ banner }: { banner: KanbanBanner }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: banner.id,
+    data: { columnId: banner.id },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "flex h-9 shrink-0 items-center justify-center rounded-md border border-dashed text-[11px] font-medium transition-colors",
+        isOver
+          ? "border-success bg-success/10 text-success"
+          : "text-muted-foreground/70",
+      )}
+    >
+      {banner.label}
+    </div>
+  );
+}
+
+export function Kanban({
+  id,
+  columns,
+  banner,
+  renderCard,
+  renderDragCard,
+  onOpen,
+  onMove,
+}: {
+  /**
+   * Seeds dnd-kit's generated accessibility ids. Without it the counter starts
+   * from a different number on the server than in the browser and React
+   * reports a hydration mismatch on every card.
+   */
+  id: string;
+  columns: KanbanColumn[];
+  banner?: KanbanBanner;
+  renderCard: (card: DealCard) => React.ReactNode;
+  renderDragCard: (card: DealCard) => React.ReactNode;
+  onOpen: (dealId: string) => void;
+  /** Persists a drop. Throwing rolls the board back to the server's version. */
+  onMove: (input: {
+    cardId: string;
+    columnId: string;
+    index: number;
+  }) => Promise<void>;
+}) {
+  // The server's columns are the source of truth; this copy is what the board
+  // renders so a drop looks instant. It resyncs whenever the server sends a
+  // different arrangement.
+  const signature = React.useMemo(
+    () =>
+      columns
+        .map((column) => `${column.id}:${column.cards.map((c) => c.id).join(",")}`)
+        .join("|"),
+    [columns],
+  );
+  const [local, setLocal] = React.useState(columns);
+  const lastSignature = React.useRef(signature);
+
+  React.useEffect(() => {
+    if (lastSignature.current !== signature) {
+      lastSignature.current = signature;
+      setLocal(columns);
+    }
+  }, [signature, columns]);
+
+  // Keep header content fresh even while a local arrangement is pending.
+  const headers = React.useMemo(
+    () => new Map(columns.map((column) => [column.id, column])),
+    [columns],
+  );
+
+  const [dragging, setDragging] = React.useState<DealCard | null>(null);
+
+  const sensors = useSensors(
+    // Without a small threshold every click would register as a drag and the
+    // card would never open.
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const findColumn = (list: KanbanColumn[], cardId: string) =>
+    list.find((column) => column.cards.some((card) => card.id === cardId));
+
+  const columnIdFor = (list: KanbanColumn[], overId: string) =>
+    list.some((column) => column.id === overId)
+      ? overId
+      : (findColumn(list, overId)?.id ?? (banner?.id === overId ? overId : null));
+
+  function handleDragStart(event: DragStartEvent) {
+    const card = findColumn(local, String(event.active.id))?.cards.find(
+      (candidate) => candidate.id === String(event.active.id),
+    );
+    setDragging(card ?? null);
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over) return;
+
+    const cardId = String(active.id);
+    const overId = String(over.id);
+    if (banner && overId === banner.id) return;
+
+    setLocal((current) => {
+      const from = findColumn(current, cardId);
+      const toId = columnIdFor(current, overId);
+      if (!from || !toId || from.id === toId) return current;
+
+      const card = from.cards.find((candidate) => candidate.id === cardId);
+      if (!card) return current;
+
+      return current.map((column) => {
+        if (column.id === from.id) {
+          return {
+            ...column,
+            cards: column.cards.filter((candidate) => candidate.id !== cardId),
+          };
+        }
+        if (column.id === toId) {
+          const overIndex = column.cards.findIndex(
+            (candidate) => candidate.id === overId,
+          );
+          const next = [...column.cards];
+          next.splice(overIndex === -1 ? next.length : overIndex, 0, card);
+          return { ...column, cards: next };
+        }
+        return column;
+      });
+    });
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setDragging(null);
+    if (!over) return;
+
+    const cardId = String(active.id);
+    const overId = String(over.id);
+
+    if (banner && overId === banner.id) {
+      const previous = local;
+      setLocal((current) =>
+        current.map((column) => ({
+          ...column,
+          cards: column.cards.filter((candidate) => candidate.id !== cardId),
+        })),
+      );
+      try {
+        await onMove({ cardId, columnId: banner.id, index: 0 });
+      } catch {
+        setLocal(previous);
+      }
+      return;
+    }
+
+    const targetId = columnIdFor(local, overId);
+    if (!targetId) return;
+
+    const previous = local;
+    let index = 0;
+
+    const next = local.map((column) => {
+      if (column.id !== targetId) return column;
+      const current = column.cards.findIndex(
+        (candidate) => candidate.id === cardId,
+      );
+      const overIndex = column.cards.findIndex(
+        (candidate) => candidate.id === overId,
+      );
+      if (current === -1) return column;
+
+      const destination = overIndex === -1 ? column.cards.length - 1 : overIndex;
+      const reordered = [...column.cards];
+      const [moved] = reordered.splice(current, 1);
+      if (moved) reordered.splice(destination, 0, moved);
+      index = destination;
+      return { ...column, cards: reordered };
+    });
+
+    setLocal(next);
+
+    try {
+      await onMove({ cardId, columnId: targetId, index });
+    } catch {
+      setLocal(previous);
+    }
+  }
+
+  return (
+    <DndContext
+      id={id}
+      sensors={sensors}
+      collisionDetection={collisionDetection}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setDragging(null)}
+    >
+      <div className="flex h-full flex-col gap-2 p-2">
+        {banner ? <Banner banner={banner} /> : null}
+
+        <div className="scrollbar-thin flex min-h-0 flex-1 gap-2 overflow-x-auto overflow-y-hidden">
+          {local.map((column) => {
+            const live = headers.get(column.id) ?? column;
+            if (live.collapsed) {
+              return (
+                <Rail
+                  key={column.id}
+                  column={{ ...live, cards: column.cards }}
+                />
+              );
+            }
+            return (
+              <section
+                key={column.id}
+                aria-label={live.railLabel}
+                className={cn(
+                  // Columns share the width so the board fits without scrolling;
+                  // below the floor they stop shrinking and the board scrolls.
+                  "bg-card/20 flex h-full min-w-[184px] flex-1 flex-col rounded-md border",
+                  live.accentClassName,
+                  live.dimmed && "opacity-70",
+                )}
+              >
+                {live.header}
+                <ColumnBody
+                  column={column}
+                  renderCard={renderCard}
+                  onOpen={onOpen}
+                />
+              </section>
+            );
+          })}
+        </div>
+      </div>
+
+      <DragOverlay dropAnimation={null}>
+        {dragging ? (
+          <div className="w-[240px] rotate-1 opacity-95">
+            {renderDragCard(dragging)}
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}

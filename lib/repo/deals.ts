@@ -1,6 +1,11 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
-import type { Owner, ValueType } from "@/lib/db/enums";
+import {
+  FIRST_SEQUENCE_STEP,
+  type Owner,
+  type SequenceStep,
+  type ValueType,
+} from "@/lib/db/enums";
 import { db, type Db } from "@/lib/db/client";
 import { newId } from "@/lib/db/ids";
 import { contacts, deals, notes, pipelines, stages } from "@/lib/db/schema";
@@ -132,6 +137,12 @@ export type CreateDealInput = {
 
 function insertDeal(handle: DbHandle, input: CreateDealInput): Deal {
   const now = input.createdAt ?? new Date();
+  const stage = handle
+    .select()
+    .from(stages)
+    .where(eq(stages.id, input.stageId))
+    .get();
+
   const row: Deal = {
     id: newId("deal"),
     contactId: input.contactId,
@@ -145,6 +156,7 @@ function insertDeal(handle: DbHandle, input: CreateDealInput): Deal {
     owner: input.owner,
     nextAction: input.nextAction?.trim() || null,
     nextActionAt: input.nextActionAt ?? null,
+    sequenceStep: stage?.isSequence ? FIRST_SEQUENCE_STEP : null,
     position: positionAtTop(handle, input.stageId),
     stageEnteredAt: now,
     createdAt: now,
@@ -304,11 +316,20 @@ export async function moveDeal(input: {
           ? "lost"
           : "open";
 
+    // Dragging into the sequence stage starts the cadence at day one; dragging
+    // anywhere else ends it. Reordering within a stage leaves it alone.
+    const sequenceStep = sameStage
+      ? deal.sequenceStep
+      : toStage.isSequence
+        ? FIRST_SEQUENCE_STEP
+        : null;
+
     tx.update(deals)
       .set({
         stageId: input.toStageId,
         position,
         status,
+        sequenceStep,
         // Reopening a deal by dragging it back out of Won or Lost clears the
         // reason it carried.
         lostReason: status === "lost" ? deal.lostReason : null,
@@ -326,6 +347,16 @@ export async function moveDeal(input: {
         toStageId: input.toStageId,
         at: now,
       });
+
+      if (sequenceStep !== deal.sequenceStep) {
+        writeActivity(tx, {
+          dealId: deal.id,
+          type: "sequence_step_changed",
+          toStageId: input.toStageId,
+          meta: { from: deal.sequenceStep, to: sequenceStep },
+          at: now,
+        });
+      }
 
       if (toStage.isWon && deal.status !== "won") {
         writeActivity(tx, {
@@ -438,6 +469,108 @@ function handoffToNextPipeline(handle: DbHandle, deal: Deal, now: Date): void {
       fromPipeline: current.name,
     },
     at: now,
+  });
+}
+
+/**
+ * Moves a deal along the follow-up cadence, which is the sub-board's only
+ * mutation.
+ *
+ * `no_answer` is the end of the cadence rather than a step in it: the deal is
+ * marked lost and moves to the Lost stage on the main board, but keeps the
+ * no_answer step so it stays visible, dimmed, in the sub-board's last column.
+ * Every other step keeps the deal in the sequence stage.
+ */
+export async function setSequenceStep(input: {
+  dealId: string;
+  step: SequenceStep;
+  targetIndex: number;
+  at?: Date;
+}): Promise<Deal> {
+  return db.transaction((tx) => {
+    const deal = tx.select().from(deals).where(eq(deals.id, input.dealId)).get();
+    if (!deal) throw new Error(`Deal ${input.dealId} not found`);
+
+    const now = input.at ?? new Date();
+    const pipelineStages = tx
+      .select()
+      .from(stages)
+      .where(eq(stages.pipelineId, deal.pipelineId))
+      .orderBy(asc(stages.position))
+      .all();
+
+    const sequenceStage = pipelineStages.find((stage) => stage.isSequence);
+    if (!sequenceStage) {
+      throw new Error(
+        `Pipeline ${deal.pipelineId} has no stage running a follow-up sequence`,
+      );
+    }
+
+    const destination =
+      input.step === "no_answer"
+        ? pipelineStages.find((stage) => stage.isLost)
+        : sequenceStage;
+    if (!destination) {
+      throw new Error(`Pipeline ${deal.pipelineId} has no Lost stage`);
+    }
+
+    const movedStage = destination.id !== deal.stageId;
+    const { position, needsRenormalize } = positionForIndex(
+      tx,
+      destination.id,
+      input.targetIndex,
+      deal.id,
+    );
+
+    tx.update(deals)
+      .set({
+        stageId: destination.id,
+        position,
+        sequenceStep: input.step,
+        ...(input.step === "no_answer"
+          ? { status: "lost" as const, lostReason: deal.lostReason ?? "No answer" }
+          : { status: "open" as const, lostReason: null }),
+        ...(movedStage ? { stageEnteredAt: now } : {}),
+        updatedAt: now,
+      })
+      .where(eq(deals.id, deal.id))
+      .run();
+
+    if (movedStage) {
+      writeActivity(tx, {
+        dealId: deal.id,
+        type: "stage_changed",
+        fromStageId: deal.stageId,
+        toStageId: destination.id,
+        at: now,
+      });
+    }
+
+    if (deal.sequenceStep !== input.step) {
+      writeActivity(tx, {
+        dealId: deal.id,
+        type: "sequence_step_changed",
+        toStageId: destination.id,
+        meta: { from: deal.sequenceStep, to: input.step },
+        at: now,
+      });
+    }
+
+    if (input.step === "no_answer" && deal.status !== "lost") {
+      writeActivity(tx, {
+        dealId: deal.id,
+        type: "lost",
+        toStageId: destination.id,
+        meta: { lostReason: "No answer" },
+        at: now,
+      });
+    }
+
+    if (needsRenormalize) renormalize(tx, destination.id);
+
+    const updated = tx.select().from(deals).where(eq(deals.id, deal.id)).get();
+    if (!updated) throw new Error("Deal vanished mid-transaction");
+    return updated;
   });
 }
 

@@ -25,6 +25,7 @@ export async function createStage(input: {
   name: string;
   color: string;
   staleAfterDays?: number | null;
+  isSequence?: boolean;
   /** Insert at this index. Appends when omitted. */
   position?: number;
 }): Promise<Stage> {
@@ -64,6 +65,7 @@ export async function createStage(input: {
         input.staleAfterDays === undefined ? 7 : input.staleAfterDays,
       isWon: false,
       isLost: false,
+      isSequence: input.isSequence ?? false,
     };
 
     tx.insert(stages).values(row).run();
@@ -79,6 +81,7 @@ export async function updateStage(
     staleAfterDays?: number | null;
     isWon?: boolean;
     isLost?: boolean;
+    isSequence?: boolean;
   },
 ): Promise<Stage | null> {
   // Keys explicitly set to undefined mean "leave alone"; null is a real value.

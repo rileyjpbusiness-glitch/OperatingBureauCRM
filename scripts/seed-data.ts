@@ -6,28 +6,32 @@ export type StageSpec = {
   staleAfterDays: number | null;
   isWon?: boolean;
   isLost?: boolean;
+  isSequence?: boolean;
 };
 
 export const OUTBOUND_STAGES: StageSpec[] = [
   { name: "New Lead", color: "#64748b", staleAfterDays: 3 },
   { name: "Researched", color: "#6366f1", staleAfterDays: 4 },
-  { name: "Contacted", color: "#0ea5e9", staleAfterDays: 5 },
-  { name: "Follow-Up Sequence", color: "#8b5cf6", staleAfterDays: 10 },
+  // Sending the first message is day one of the cadence, so contacting and
+  // following up are one stage with a sub-board behind it.
+  {
+    name: "In Sequence",
+    color: "#8b5cf6",
+    staleAfterDays: 30,
+    isSequence: true,
+  },
   { name: "Replied", color: "#14b8a6", staleAfterDays: 3 },
   { name: "Call Booked", color: "#f59e0b", staleAfterDays: 7 },
-  { name: "Call Held", color: "#f97316", staleAfterDays: 4 },
-  { name: "Proposal Sent", color: "#ec4899", staleAfterDays: 5 },
+  // The call was taken and we are working to close it.
+  { name: "Closing", color: "#ec4899", staleAfterDays: 5 },
   { name: "Won", color: "#22c55e", staleAfterDays: null, isWon: true },
   { name: "Lost", color: "#ef4444", staleAfterDays: null, isLost: true },
 ];
 
 export const DELIVERY_STAGES: StageSpec[] = [
   { name: "Onboarding", color: "#6366f1", staleAfterDays: 5 },
-  { name: "Access + Assets Collected", color: "#0ea5e9", staleAfterDays: 7 },
-  { name: "Build In Progress", color: "#8b5cf6", staleAfterDays: 14 },
-  { name: "Launched", color: "#22c55e", staleAfterDays: 30 },
-  { name: "Optimizing", color: "#14b8a6", staleAfterDays: 30 },
-  { name: "Renewal / Expansion", color: "#f59e0b", staleAfterDays: 45 },
+  { name: "Building", color: "#8b5cf6", staleAfterDays: 14 },
+  { name: "Live", color: "#22c55e", staleAfterDays: 30 },
   { name: "Churned", color: "#ef4444", staleAfterDays: null, isLost: true },
 ];
 
@@ -35,13 +39,11 @@ export const DELIVERY_STAGES: StageSpec[] = [
 export const FUNNEL = {
   newLead: 0,
   researched: 1,
-  contacted: 2,
-  followUp: 3,
-  replied: 4,
-  callBooked: 5,
-  callHeld: 6,
-  proposalSent: 7,
-  won: 8,
+  inSequence: 2,
+  replied: 3,
+  callBooked: 4,
+  closing: 5,
+  won: 6,
 } as const;
 
 export type LeadSpec = {
@@ -65,6 +67,8 @@ export type LeadSpec = {
   /** Days the deal has been sitting in its current stage. */
   ageInStage: number;
   lost?: { reason: string };
+  /** Died inside the cadence: lands in No Answer rather than plain Lost. */
+  lostInSequence?: boolean;
   tags: string[];
   /** Stage indexes the lead jumped over, e.g. inbound skipping research. */
   skipped?: number[];
@@ -97,7 +101,8 @@ export const LEADS: LeadSpec[] = [
     niche: "Mindset coaching for women in tech leadership", offerType: "12-week group program",
     monthlyRevenue: 28_000, source: "cold_email", owner: "kavi",
     value: 3_500, valueType: "monthly_recurring",
-    reached: FUNNEL.followUp, ageInStage: 19,
+    reached: FUNNEL.inSequence, ageInStage: 19,
+    lostInSequence: true,
     lost: { reason: "Four emails over three weeks. Opened twice, never replied. Parked until the next cohort launch." },
     tags: ["coaching", "warm"],
     research: "Runs two cohorts a year at $2,400 a seat. Fills them off a 9k newsletter and nothing else. Waitlist goes cold between launches.",
@@ -110,7 +115,7 @@ export const LEADS: LeadSpec[] = [
     niche: "Futures trading education", offerType: "8-week cohort course",
     monthlyRevenue: 180_000, source: "ig_dm", owner: "riley",
     value: 7_500, valueType: "monthly_recurring",
-    reached: FUNNEL.proposalSent, ageInStage: 6,
+    reached: FUNNEL.closing, ageInStage: 6,
     tags: ["info-product", "high-ticket", "high-intent"],
     research: "$180k/mo off paid traffic to a webinar. Two setters, no SDR process, show rate under 40%.",
     angle: "Show rate is the whole problem. They are paying for booked calls that never happen.",
@@ -122,7 +127,7 @@ export const LEADS: LeadSpec[] = [
     niche: "Nutrition coaching for endurance athletes", offerType: "Membership",
     monthlyRevenue: 22_000, source: "cold_email", owner: "kavi",
     value: 2_500, valueType: "monthly_recurring",
-    reached: FUNNEL.followUp, ageInStage: 9,
+    reached: FUNNEL.inSequence, ageInStage: 9,
     tags: ["nutrition", "membership"],
     research: "$49/mo membership, roughly 450 members, churn around 9% monthly. Growth is all organic Reels.",
     angle: "Churn eats every new member. Retention is worth more to her than acquisition right now.",
@@ -146,7 +151,7 @@ export const LEADS: LeadSpec[] = [
     niche: "Public speaking coaching for founders", offerType: "1:1 intensive",
     monthlyRevenue: 18_000, source: "referral", owner: "kavi",
     value: 3_000, valueType: "monthly_recurring",
-    reached: FUNNEL.contacted, ageInStage: 4,
+    reached: FUNNEL.inSequence, ageInStage: 1,
     tags: ["coaching", "referral"],
     research: "$3k intensives, about six a month, all word of mouth from two accelerators.",
     angle: "Entirely dependent on two referral sources. One relationship ending halves her business.",
@@ -158,7 +163,7 @@ export const LEADS: LeadSpec[] = [
     niche: "Growth coaching for marketing agency owners", offerType: "Mastermind",
     monthlyRevenue: 120_000, source: "inbound", owner: "riley",
     value: 9_000, valueType: "monthly_recurring",
-    reached: FUNNEL.callHeld, ageInStage: 3,
+    reached: FUNNEL.closing, ageInStage: 3,
     skipped: [FUNNEL.researched],
     tags: ["mastermind", "high-ticket", "high-intent"],
     research: "$2,500/mo mastermind, 48 members. Came in through the site after reading the teardown post.",
@@ -183,7 +188,7 @@ export const LEADS: LeadSpec[] = [
     niche: "Shariah-compliant investing education", offerType: "Membership",
     monthlyRevenue: 70_000, source: "cold_email", owner: "riley",
     value: 5_000, valueType: "monthly_recurring",
-    reached: FUNNEL.followUp, ageInStage: 23,
+    reached: FUNNEL.inSequence, ageInStage: 23,
     tags: ["info-product", "membership"],
     research: "$79/mo membership, about 880 members. Underserved niche, very little competition, all growth from one viral thread a year ago.",
     angle: "Growth has flatlined since the thread. No repeatable acquisition at all.",
@@ -207,7 +212,7 @@ export const LEADS: LeadSpec[] = [
     niche: "Sales training for SaaS teams", offerType: "Certification program",
     monthlyRevenue: 140_000, source: "cold_email", owner: "riley",
     value: 8_000, valueType: "monthly_recurring",
-    reached: FUNNEL.proposalSent, ageInStage: 3,
+    reached: FUNNEL.closing, ageInStage: 3,
     tags: ["b2b", "high-ticket", "high-intent"],
     research: "$4,500 certification sold to teams. Deal sizes are large, volume is low, pipeline is entirely referral.",
     angle: "Wants predictable top of funnel. Said outbound is the only lever he has not pulled.",
@@ -244,7 +249,7 @@ export const LEADS: LeadSpec[] = [
     niche: "Personal branding for consultants", offerType: "Done-for-you",
     monthlyRevenue: 48_000, source: "referral", owner: "kavi",
     value: 4_000, valueType: "monthly_recurring",
-    reached: FUNNEL.contacted, ageInStage: 13,
+    reached: FUNNEL.inSequence, ageInStage: 4,
     tags: ["agency", "referral"],
     research: "$6k done-for-you brand sprints, roughly eight a month. Delivery heavy, sales light.",
     angle: "Referred by Colin. Worth a warm mention of him in the first message.",
@@ -256,7 +261,7 @@ export const LEADS: LeadSpec[] = [
     niche: "Junior developer bootcamp", offerType: "Cohort course",
     monthlyRevenue: 85_000, source: "inbound", owner: "riley",
     value: 5_500, valueType: "monthly_recurring",
-    reached: FUNNEL.callHeld, ageInStage: 5,
+    reached: FUNNEL.closing, ageInStage: 5,
     skipped: [FUNNEL.researched],
     tags: ["education", "high-intent"],
     research: "$3,900 bootcamp, monthly intakes of 25 to 40. Fills off affiliate YouTubers, which is getting expensive.",
@@ -269,7 +274,7 @@ export const LEADS: LeadSpec[] = [
     niche: "Hormone and cycle health coaching", offerType: "Membership",
     monthlyRevenue: 26_000, source: "cold_email", owner: "kavi",
     value: 2_500, valueType: "monthly_recurring",
-    reached: FUNNEL.followUp, ageInStage: 11,
+    reached: FUNNEL.inSequence, ageInStage: 13,
     tags: ["health", "membership"],
     research: "$59/mo membership, about 400 members. Heavy TikTok presence, almost no email.",
     angle: "Audience lives on a platform she does not control and cannot contact directly.",
@@ -317,7 +322,8 @@ export const LEADS: LeadSpec[] = [
     niche: "Business coaching for pilates studio owners", offerType: "Group coaching",
     monthlyRevenue: 33_000, source: "cold_email", owner: "kavi",
     value: 3_000, valueType: "monthly_recurring",
-    reached: FUNNEL.followUp, ageInStage: 13,
+    reached: FUNNEL.inSequence, ageInStage: 13,
+    lostInSequence: true,
     lost: { reason: "No response across five touches. Workshop season, likely buried." },
     tags: ["coaching", "b2b"],
     research: "$497/mo group for studio owners, 66 members. Sells at live workshops, nothing in between.",
@@ -330,7 +336,8 @@ export const LEADS: LeadSpec[] = [
     niche: "Ghostwriting business training", offerType: "Membership",
     monthlyRevenue: 75_000, source: "ig_dm", owner: "riley",
     value: 4_500, valueType: "monthly_recurring",
-    reached: FUNNEL.followUp, ageInStage: 26,
+    reached: FUNNEL.inSequence, ageInStage: 26,
+    lostInSequence: true,
     lost: { reason: "Five DMs, nothing back. Posts daily, so this is a priority problem rather than a reach problem." },
     tags: ["info-product", "membership"],
     research: "$99/mo guild, roughly 760 members. Sells off X almost entirely, one thread at a time.",
@@ -356,7 +363,7 @@ export const LEADS: LeadSpec[] = [
     niche: "Print on demand ecommerce training", offerType: "Evergreen course",
     monthlyRevenue: 110_000, source: "cold_email", owner: "riley",
     value: 6_500, valueType: "one_time",
-    reached: FUNNEL.callHeld, ageInStage: 17,
+    reached: FUNNEL.closing, ageInStage: 17,
     lost: { reason: "Hired two setters in-house the week after the call. Said revisit in Q2." },
     tags: ["info-product", "ecommerce"],
     research: "$997 course, roughly 110 sales a month off TikTok and a free community.",
@@ -393,7 +400,8 @@ export const LEADS: LeadSpec[] = [
     niche: "Personal finance for creatives", offerType: "Membership",
     monthlyRevenue: 38_000, source: "cold_email", owner: "kavi",
     value: 3_000, valueType: "monthly_recurring",
-    reached: FUNNEL.followUp, ageInStage: 22,
+    reached: FUNNEL.inSequence, ageInStage: 22,
+    lostInSequence: true,
     lost: { reason: "Went cold after four touches. Break-up email was opened, still no reply." },
     tags: ["membership", "finance"],
     research: "$45/mo club, roughly 840 members, strong community, weak funnel.",
@@ -406,7 +414,7 @@ export const LEADS: LeadSpec[] = [
     niche: "Faceless YouTube channel training", offerType: "Cohort course",
     monthlyRevenue: 160_000, source: "ig_dm", owner: "riley",
     value: 8_500, valueType: "rev_share_estimate",
-    reached: FUNNEL.proposalSent, ageInStage: 9,
+    reached: FUNNEL.closing, ageInStage: 9,
     tags: ["info-product", "high-ticket", "rev-share"],
     research: "$2,997 cohort, six figures a month, wants a performance deal rather than a retainer.",
     angle: "Only one asking for rev share. Proposal is built around a percentage of new cash collected.",
@@ -418,7 +426,7 @@ export const LEADS: LeadSpec[] = [
     niche: "PR coaching for ecommerce founders", offerType: "Done-for-you",
     monthlyRevenue: 44_000, source: "referral", owner: "kavi",
     value: 3_500, valueType: "monthly_recurring",
-    reached: FUNNEL.contacted, ageInStage: 2,
+    reached: FUNNEL.inSequence, ageInStage: 2,
     tags: ["agency", "referral"],
     research: "$4k/mo PR retainers, nine clients. Referred by Mireille.",
     angle: "Warm intro already made. First message can skip the pitch entirely.",

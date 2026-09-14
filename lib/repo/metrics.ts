@@ -5,7 +5,7 @@ import { db } from "@/lib/db/client";
 import { activities, contacts, deals, stages } from "@/lib/db/schema";
 
 import { dealFilterConditions } from "./filters";
-import { annualizedCents, monthlyRecurringCents } from "./money";
+import { monthlyRecurringCents } from "./money";
 import type { DealCard, DealFilters, Stage, StageMetrics } from "./types";
 
 /**
@@ -122,11 +122,9 @@ export function stageMetricsFor(input: {
   for (const stage of ordered) {
     const cards = cardsByStage.get(stage.id) ?? [];
 
-    let annualized = 0;
     let recurring = 0;
     let totalDays = 0;
     for (const card of cards) {
-      annualized += annualizedCents(card.value, card.valueType);
       recurring += monthlyRecurringCents(card.value, card.valueType);
       totalDays += card.daysInStage;
     }
@@ -150,7 +148,6 @@ export function stageMetricsFor(input: {
     byStageId[stage.id] = {
       stageId: stage.id,
       count: cards.length,
-      totalAnnualizedCents: annualized,
       totalMonthlyRecurringCents: recurring,
       avgDaysInStage: cards.length === 0 ? null : totalDays / cards.length,
       conversionFromPrevious,

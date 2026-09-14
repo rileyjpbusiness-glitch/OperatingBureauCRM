@@ -16,3 +16,5 @@ export * from "./activities";
 export * from "./tags";
 export * from "./metrics";
 export * from "./board";
+export * from "./dashboard";
+export * from "./reset";

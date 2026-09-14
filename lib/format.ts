@@ -33,12 +33,19 @@ export function formatCents(cents: number): string {
 
 const VALUE_TYPE_SUFFIX: Record<ValueType, string> = {
   monthly_recurring: "/mo",
-  one_time: " one-time",
-  rev_share_estimate: "/mo est.",
+  one_time: " once",
+  // A rev-share estimate reads the same as a retainer; the muted colour on the
+  // card is what marks it as a guess.
+  rev_share_estimate: "/mo",
 };
 
 export function formatDealValue(cents: number, type: ValueType): string {
   return `${formatCents(cents)}${VALUE_TYPE_SUFFIX[type]}`;
+}
+
+/** Rendered muted rather than suffixed, so the format stays uniform. */
+export function isEstimatedValue(type: ValueType): boolean {
+  return type === "rev_share_estimate";
 }
 
 export function formatPercent(ratio: number): string {
@@ -64,8 +71,9 @@ export function contactName(contact: {
 }
 
 /**
- * Next actions are read at a glance, so they render as distance from today
- * rather than a date you have to subtract in your head.
+ * Two formats, not four. Inside a week either way it is relative, because that
+ * is the window you act on; beyond it, an absolute date, because "in 23d" is
+ * not something anyone reads as a date.
  */
 export function formatDueDate(date: Date, now: Date = new Date()): string {
   const startOf = (value: Date) =>
@@ -73,11 +81,14 @@ export function formatDueDate(date: Date, now: Date = new Date()): string {
   const days = Math.round((startOf(date) - startOf(now)) / MS_PER_DAY);
 
   if (days === 0) return "today";
-  if (days === 1) return "tomorrow";
-  if (days === -1) return "yesterday";
-  if (days < 0) return `${Math.abs(days)}d overdue`;
-  if (days < 7) return `in ${days}d`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (days < 0) {
+    return days >= -7
+      ? `${Math.abs(days)}d overdue`
+      : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  return days <= 7
+    ? `in ${days}d`
+    : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export function formatDateTime(date: Date): string {

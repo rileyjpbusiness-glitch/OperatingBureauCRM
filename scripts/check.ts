@@ -226,6 +226,67 @@ async function main() {
     if (fs.existsSync(file)) fs.unlinkSync(file);
   }
 
+  // --- follow-up cadence ---
+  const seqStage = await repo.createStage({
+    pipelineId: pipeline.id, name: "Seq", color: "#fff", isSequence: true,
+  });
+  check("createStage records the sequence flag", seqStage.isSequence === true);
+
+  const seqDeal = await repo.createDeal({
+    contactId: contact.id, pipelineId: pipeline.id, stageId: a.id,
+    title: "Cadence", owner: "riley",
+  });
+  check("a deal outside the sequence has no step",
+    (await repo.getDeal(seqDeal.id))?.sequenceStep === null);
+
+  await repo.moveDeal({ dealId: seqDeal.id, toStageId: seqStage.id, targetIndex: 0 });
+  check("entering the sequence starts the cadence at day one",
+    (await repo.getDeal(seqDeal.id))?.sequenceStep === "day_1");
+  check("starting the cadence is logged",
+    (await repo.listActivities(seqDeal.id)).some((x) => x.type === "sequence_step_changed"));
+
+  await repo.setSequenceStep({ dealId: seqDeal.id, step: "day_3", targetIndex: 0 });
+  check("advancing the cadence keeps the deal in the sequence stage",
+    (await repo.getDeal(seqDeal.id))?.stageId === seqStage.id);
+  check("advancing the cadence sets the step",
+    (await repo.getDeal(seqDeal.id))?.sequenceStep === "day_3");
+  check("each advance is logged",
+    (await repo.listActivities(seqDeal.id)).filter((x) => x.type === "sequence_step_changed").length === 2);
+
+  await repo.moveDeal({ dealId: seqDeal.id, toStageId: a.id, targetIndex: 0 });
+  check("leaving the sequence clears the step",
+    (await repo.getDeal(seqDeal.id))?.sequenceStep === null);
+
+  // No Answer is the end of the cadence, not a step in it.
+  await repo.moveDeal({ dealId: seqDeal.id, toStageId: seqStage.id, targetIndex: 0 });
+  await repo.setSequenceStep({ dealId: seqDeal.id, step: "no_answer", targetIndex: 0 });
+  const dead = await repo.getDeal(seqDeal.id);
+  check("no answer marks the deal lost", dead?.status === "lost", dead?.status);
+  check("no answer moves the deal to the Lost stage", dead?.stageId === lostStage.id);
+  check("no answer records a reason", dead?.lostReason === "No answer", dead?.lostReason);
+  check("no answer keeps the step so the sub-board still shows it",
+    dead?.sequenceStep === "no_answer");
+  check("no answer writes a lost activity",
+    (await repo.listActivities(seqDeal.id)).some((x) => x.type === "lost"));
+
+  const subBoard = await repo.getSequenceBoard("test");
+  const noAnswerColumn = subBoard?.columns.find((c) => c.step === "no_answer");
+  check("the sub-board still lists a no-answer deal",
+    noAnswerColumn?.cards.some((c) => c.id === seqDeal.id) === true);
+  check("the sub-board has one column per cadence step",
+    subBoard?.columns.length === 9, subBoard?.columns.length);
+
+  // --- detail panel data ---
+  const detail = await repo.getDealDetail(deal.id);
+  check("deal detail loads", detail !== null);
+  check("history merges touches and activities",
+    (detail?.history.length ?? 0) > 0);
+  check("history does not double-count logged touches",
+    detail?.history.every((e) => e.kind === "touch" || e.activity.type !== "touch_logged") === true);
+  check("history is newest first",
+    (detail?.history ?? []).every((entry, i, list) =>
+      i === 0 || list[i - 1]!.at.getTime() >= entry.at.getTime()));
+
   console.log(failures === 0 ? "\nall checks passed" : `\n${failures} FAILED`);
   if (failures > 0) process.exit(1);
 }

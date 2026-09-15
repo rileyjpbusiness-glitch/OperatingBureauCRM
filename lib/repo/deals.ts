@@ -13,7 +13,7 @@ import { contacts, deals, notes, pipelines, stages } from "@/lib/db/schema";
 import { writeActivity, type DbHandle } from "./activity-log";
 import { createContact, type ContactInput } from "./contacts";
 import { combine, dealFilterConditions } from "./filters";
-import { linksByContactId } from "./links";
+import { addLink, linkFromHandle, linksByContactId } from "./links";
 import { tagsByContactId } from "./tags";
 import type {
   Contact,
@@ -214,6 +214,21 @@ export async function createContactWithDeal(input: {
   owner?: Owner;
 }): Promise<{ contact: Contact; deal: Deal }> {
   const contact = await createContact(input.contact);
+
+  // A lead added through the form types a handle, not a link. Writing it now
+  // means their Instagram is on the card the moment they appear, rather than
+  // after the next boot. The backfill is still there as the safety net, and it
+  // skips a contact that already has links, so this cannot double up.
+  const derived = linkFromHandle(contact.instagramHandle);
+  if (derived) {
+    await addLink({
+      contactId: contact.id,
+      platform: derived.platform,
+      url: derived.url,
+      label: derived.label,
+    });
+  }
+
   const deal = await createDeal({
     contactId: contact.id,
     pipelineId: input.pipelineId,

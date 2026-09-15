@@ -110,6 +110,38 @@ export async function existingInstagramUrls(): Promise<Set<string>> {
 }
 
 /**
+ * What a bare handle or a pasted URL becomes, as a link.
+ *
+ * The one place that decides it. The + Lead form calls this at creation time so
+ * a new lead's Instagram is a link immediately, and the boot backfill calls it
+ * for everything that predates that, so the two can never disagree about what a
+ * handle means.
+ */
+export function linkFromHandle(raw: string | null | undefined): {
+  platform: LinkPlatform;
+  url: string;
+  label: string | null;
+} | null {
+  // The @ comes off before anything else. normalizeHandle stores a URL it does
+  // not recognise as "@https://...", so testing for a URL first would read that
+  // as a bare handle and build an Instagram address around a YouTube one.
+  const handle = (raw ?? "").trim().replace(/^@+/, "").trim();
+  if (!handle) return null;
+
+  const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(handle);
+  const url = looksLikeUrl
+    ? ensureProtocol(handle)
+    : `https://www.instagram.com/${handle}/`;
+  const platform = looksLikeUrl ? classifyUrl(url) : "instagram";
+
+  return {
+    platform,
+    url,
+    label: platform === "other" ? (parseUrl(url)?.hostname ?? null) : null,
+  };
+}
+
+/**
  * Turns each contact's old instagram_handle into a link row, once.
  *
  * Runs on every boot and does nothing after the first: a contact is skipped if
@@ -151,24 +183,17 @@ export async function backfillLinks(): Promise<{
     let linked = 0;
 
     for (const contact of pending) {
-      const handle = (contact.handle ?? "").trim();
-      if (handle && !withLinks.has(contact.id)) {
-        // A handle that is already a URL keeps its own platform; a bare handle
-        // is an Instagram account, which is what the field always meant.
-        const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(handle);
-        const url = looksLikeUrl
-          ? ensureProtocol(handle)
-          : `https://www.instagram.com/${handle.replace(/^@+/, "")}/`;
-        const platform = looksLikeUrl ? classifyUrl(url) : "instagram";
-
+      const derived = withLinks.has(contact.id)
+        ? null
+        : linkFromHandle(contact.handle);
+      if (derived) {
         tx.insert(contactLinks)
           .values({
             id: newId("clink"),
             contactId: contact.id,
-            platform,
-            url,
-            label:
-              platform === "other" ? (parseUrl(url)?.hostname ?? null) : null,
+            platform: derived.platform,
+            url: derived.url,
+            label: derived.label,
             position: 0,
             createdAt: now,
           })

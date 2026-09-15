@@ -356,6 +356,47 @@ async function main() {
     daily.readings.leads.previous !== 0 ||
     daily.readings.leads.changeRatio === null);
 
+  // --- links -----------------------------------------------------------------
+  const linkLead = await repo.createContactWithDeal({
+    contact: {
+      firstName: "Link", lastName: "Subject", owner: "riley",
+      source: "ig_dm", instagramHandle: "@link.subject",
+    },
+    pipelineId: pipeline.id,
+    stageId: a.id,
+  });
+  const linked = await repo.listLinks(linkLead.contact.id);
+  check("a lead added with a handle gets its link at once",
+    linked.length === 1 && linked[0]?.platform === "instagram", linked);
+  check("the handle becomes a full profile URL",
+    linked[0]?.url === "https://www.instagram.com/link.subject/", linked[0]?.url);
+  check("the handle column is left alone",
+    (await repo.getContact(linkLead.contact.id))?.instagramHandle === "@link.subject");
+  // The safety net must not add a second copy of what the form already wrote.
+  await repo.backfillLinks();
+  check("the backfill does not double up on a lead that already has links",
+    (await repo.listLinks(linkLead.contact.id)).length === 1);
+
+  const urlLead = await repo.createContactWithDeal({
+    contact: {
+      firstName: "Url", lastName: "Subject", owner: "riley",
+      source: "ig_dm", instagramHandle: "https://www.youtube.com/@urlsubject",
+    },
+    pipelineId: pipeline.id,
+    stageId: a.id,
+  });
+  const urlLinks = await repo.listLinks(urlLead.contact.id);
+  check("a handle that is already a URL keeps its own platform",
+    urlLinks[0]?.platform === "youtube", urlLinks[0]);
+
+  const bareLead = await repo.createContactWithDeal({
+    contact: { firstName: "Bare", owner: "riley", source: "ig_dm" },
+    pipelineId: pipeline.id,
+    stageId: a.id,
+  });
+  check("no handle means no link",
+    (await repo.listLinks(bareLead.contact.id)).length === 0);
+
   // --- the bin ---------------------------------------------------------------
   // The invariant worth protecting is not that binning works, but that a binned
   // deal disappears from every surface at once. A deal that vanished from the

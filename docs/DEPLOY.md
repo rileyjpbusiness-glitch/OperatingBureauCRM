@@ -177,11 +177,18 @@ fly ssh console -C "npm run db:inspect"
 ```
 
 **Backups.** Fly snapshots volumes daily and keeps them five days. To pull the
-database down:
+database down, take the write-ahead log with it:
 
 ```bash
-fly ssh sftp get /data/bureau.db ./bureau-backup.db
+fly ssh sftp get /data/bureau.db     ./bureau-backup.db
+fly ssh sftp get /data/bureau.db-wal ./bureau-backup.db-wal
 ```
+
+The app opens SQLite in WAL mode, so a transaction that has committed may still
+live in `bureau.db-wal` rather than in `bureau.db`. Copying the first file alone
+from a running machine can quietly drop the most recent work, and it looks like
+a clean backup. SQLite replays the two together; `-shm` is rebuilt and does not
+need copying.
 
 Worth doing before anything destructive. Five days of automatic snapshots is
 thin cover for the only copy of your pipeline.

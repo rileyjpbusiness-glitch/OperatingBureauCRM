@@ -130,6 +130,20 @@ export async function getDealCard(id: string): Promise<DealCard | null> {
   return buildCards([row], tagMap, now, linkMap)[0] ?? null;
 }
 
+/**
+ * Next free position at the bottom of a stage. Imported leads land here so
+ * nothing already on the board shifts by a single row.
+ */
+function positionAtBottom(handle: DbHandle, stageId: string): number {
+  const row = handle
+    .select({ max: sql<number | null>`max(${deals.position})` })
+    .from(deals)
+    .where(eq(deals.stageId, stageId))
+    .get();
+  const max = row?.max;
+  return max === null || max === undefined ? POSITION_GAP : max + POSITION_GAP;
+}
+
 /** Next free position at the top of a stage. */
 function positionAtTop(handle: DbHandle, stageId: string): number {
   const row = handle
@@ -153,6 +167,10 @@ export type CreateDealInput = {
   nextActionAt?: Date | null;
   /** The seed backdates deals so the funnel has real history. */
   createdAt?: Date;
+  /** Set only by the bulk importer, which stamps a whole batch alike. */
+  importBatchId?: string | null;
+  /** Bulk imports append; everything else goes to the top of the column. */
+  atBottom?: boolean;
 };
 
 function insertDeal(handle: DbHandle, input: CreateDealInput): Deal {
@@ -176,11 +194,14 @@ function insertDeal(handle: DbHandle, input: CreateDealInput): Deal {
     // Nothing arrives hot; it is something you decide about a lead later.
     priority: false,
     binnedAt: null,
+    importBatchId: input.importBatchId ?? null,
     owner: input.owner,
     nextAction: input.nextAction?.trim() || null,
     nextActionAt: input.nextActionAt ?? null,
     sequenceStep: stage?.isSequence ? FIRST_SEQUENCE_STEP : null,
-    position: positionAtTop(handle, input.stageId),
+    position: input.atBottom
+      ? positionAtBottom(handle, input.stageId)
+      : positionAtTop(handle, input.stageId),
     stageEnteredAt: now,
     createdAt: now,
     updatedAt: now,

@@ -1,9 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { Trash2, Upload } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { RotateCcw, Trash2, Upload } from "lucide-react";
 
-import { importContextAction } from "@/lib/actions";
+import {
+  importContextAction,
+  importLeadsAction,
+  lastImportBatchAction,
+  undoLastImportAction,
+} from "@/lib/actions";
+import type {
+  ImportBatchSummary,
+  ImportResult,
+  UndoResult,
+} from "@/lib/repo/import";
 import { OWNERS, SOURCES, type Owner, type Source } from "@/lib/db/enums";
 import {
   LINK_PLATFORMS,
@@ -83,7 +94,13 @@ export function ImportDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const router = useRouter();
   const [context, setContext] = React.useState<Context | null>(null);
+  const [done, setDone] = React.useState<ImportResult | null>(null);
+  const [lastBatch, setLastBatch] = React.useState<ImportBatchSummary | null>(null);
+  const [undoing, setUndoing] = React.useState<"idle" | "confirm" | "working">("idle");
+  const [undone, setUndone] = React.useState<UndoResult | null>(null);
+  const [busy, setBusy] = React.useState(false);
   const [text, setText] = React.useState("");
   const [rows, setRows] = React.useState<Row[] | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
@@ -101,6 +118,9 @@ export function ImportDialog({
   React.useEffect(() => {
     if (!open) return;
     let cancelled = false;
+    void lastImportBatchAction().then((batch) => {
+      if (!cancelled) setLastBatch(batch);
+    });
     void importContextAction().then((loaded) => {
       if (cancelled) return;
       setContext(loaded);
@@ -123,6 +143,9 @@ export function ImportDialog({
     setFileError(null);
     setText("");
     setNicheOverride("");
+    setDone(null);
+    setUndoing("idle");
+    setUndone(null);
   }, [open]);
 
   function parse() {
@@ -161,6 +184,54 @@ export function ImportDialog({
       );
     } else {
       setNotice(null);
+    }
+  }
+
+  async function commit() {
+    if (!rows) return;
+    const chosen = rows.filter((row) => row.include);
+    if (chosen.length === 0) return;
+
+    setBusy(true);
+    try {
+      const result = await importLeadsAction({
+        stageId,
+        owner,
+        source,
+        leads: chosen.map((row) => ({
+          name: row.name,
+          company: row.company,
+          niche: row.niche,
+          links: row.links.map((link) => ({
+            platform: link.platform,
+            url: link.url,
+            label: link.label,
+          })),
+        })),
+      });
+      setDone(result);
+      setLastBatch({
+        batchId: result.batchId,
+        count: result.created,
+        stageName: result.stageName,
+        at: new Date(),
+      });
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function undo() {
+    setUndoing("working");
+    try {
+      const result = await undoLastImportAction();
+      setUndone(result);
+      setLastBatch(null);
+      setDone(null);
+      router.refresh();
+    } finally {
+      setUndoing("idle");
     }
   }
 
@@ -215,6 +286,79 @@ export function ImportDialog({
           Paste or drop a prospecting doc, review what it found, then import
         </DialogDescription>
 
+        {done ? (
+          <div className="mt-4 space-y-4">
+            <p className="text-text-1 font-sans text-body">
+              Imported {done.created} {done.created === 1 ? "lead" : "leads"} into{" "}
+              {done.stageName}.
+            </p>
+            <p className="text-text-3 font-mono text-micro">
+              They are at the bottom of the column. Nothing already on the board
+              moved.
+            </p>
+
+            <div className="border-hairline flex items-center justify-between gap-3 border-t pt-3">
+              {/* Undo belongs here first, while the paste is still in mind. */}
+              {undoing === "confirm" ? (
+                <span className="text-signal-warm font-mono text-micro">
+                  Remove {done.created} {done.created === 1 ? "lead" : "leads"} from{" "}
+                  {done.stageName}?
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setUndoing("confirm")}
+                  className="motion-fast text-text-3 hover:text-text-1 flex items-center gap-1.5 font-sans text-tiny outline-none"
+                >
+                  <RotateCcw className="size-3" strokeWidth={1.25} />
+                  Undo this import
+                </button>
+              )}
+              <div className="flex items-center gap-2">
+                {undoing === "confirm" ? (
+                  <>
+                    <Button variant="ghost" onClick={() => setUndoing("idle")}>
+                      Keep them
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      disabled={undoing !== "confirm"}
+                      onClick={() => void undo()}
+                    >
+                      Undo import
+                    </Button>
+                  </>
+                ) : (
+                  <Button onClick={() => onOpenChange(false)}>Done</Button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : undone ? (
+          <div className="mt-4 space-y-3">
+            <p className="text-text-1 font-sans text-body">
+              Removed {undone.removed} {undone.removed === 1 ? "lead" : "leads"}.
+            </p>
+            {undone.kept.length > 0 ? (
+              <div className="space-y-1">
+                <p className="text-text-3 font-mono text-micro tracking-field uppercase">
+                  Left alone, because you have worked them since
+                </p>
+                <ul className="text-text-2 space-y-0.5 font-sans text-tiny">
+                  {undone.kept.map((lead) => (
+                    <li key={lead.name}>
+                      {lead.name}
+                      <span className="text-text-3"> - {lead.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <div className="border-hairline flex justify-end border-t pt-3">
+              <Button onClick={() => onOpenChange(false)}>Done</Button>
+            </div>
+          </div>
+        ) : (
         <div className="mt-3 space-y-3">
           {/* Region A: where the text comes from */}
           <div>
@@ -350,8 +494,42 @@ export function ImportDialog({
               onCellKeyDown={onCellKeyDown}
             />
           ) : null}
-        </div>
 
+          {/* Reopening the modal is the other place you would look for undo. */}
+          {lastBatch && !rows ? (
+            <div className="border-hairline flex items-center justify-between gap-3 border-t pt-2">
+              <span className="text-text-3 font-mono text-micro">
+                Last import: {lastBatch.count}{" "}
+                {lastBatch.count === 1 ? "lead" : "leads"} into {lastBatch.stageName}
+              </span>
+              {undoing === "confirm" ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-signal-warm font-mono text-micro">
+                    Remove {lastBatch.count} from {lastBatch.stageName}?
+                  </span>
+                  <Button variant="ghost" onClick={() => setUndoing("idle")}>
+                    Keep
+                  </Button>
+                  <Button variant="destructive" onClick={() => void undo()}>
+                    Undo import
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setUndoing("confirm")}
+                  className="motion-fast text-text-3 hover:text-text-1 flex items-center gap-1.5 font-sans text-tiny outline-none"
+                >
+                  <RotateCcw className="size-3" strokeWidth={1.25} />
+                  Undo last import
+                </button>
+              )}
+            </div>
+          ) : null}
+        </div>
+        )}
+
+        {done || undone ? null : (
         <div className="border-hairline mt-3 flex items-center justify-between gap-3 border-t pt-3">
           <span className="text-text-3 font-mono text-micro">
             {rows ? `${selected} of ${rows.length} leads selected` : "Nothing parsed yet"}
@@ -360,11 +538,15 @@ export function ImportDialog({
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button disabled={selected === 0} title="Not wired up yet">
-              Import {selected} {selected === 1 ? "lead" : "leads"}
+            <Button
+              disabled={selected === 0 || busy}
+              onClick={() => void commit()}
+            >
+              {busy ? "Importing..." : `Import ${selected} ${selected === 1 ? "lead" : "leads"}`}
             </Button>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

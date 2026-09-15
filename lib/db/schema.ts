@@ -156,6 +156,12 @@ export const deals = sqliteTable(
      */
     binnedAt: integer("binned_at", { mode: "timestamp_ms" }),
     /**
+     * Shared by every lead created in one bulk import, so a batch is findable
+     * as a group afterwards and can be undone as one. Null for anything added
+     * by hand.
+     */
+    importBatchId: text("import_batch_id"),
+    /**
      * Defaults from the contact at creation but is reassignable per deal, so
      * delivery can sit with a different operator than outbound did.
      */
@@ -190,6 +196,7 @@ export const deals = sqliteTable(
     index("deals_sequence_step_idx").on(t.sequenceStep),
     index("deals_priority_idx").on(t.priority),
     index("deals_binned_idx").on(t.binnedAt),
+    index("deals_import_batch_idx").on(t.importBatchId),
   ],
 );
 

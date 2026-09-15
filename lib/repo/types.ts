@@ -82,6 +82,8 @@ export type Deal = {
    * deletes the row.
    */
   binnedAt: Date | null;
+  /** Shared by every lead from one bulk import; null for anything added by hand. */
+  importBatchId: string | null;
   owner: Owner;
   nextAction: string | null;
   nextActionAt: Date | null;

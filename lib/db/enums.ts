@@ -66,6 +66,7 @@ export const ACTIVITY_TYPES = [
   "value_changed",
   "won",
   "lost",
+  "imported",
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 

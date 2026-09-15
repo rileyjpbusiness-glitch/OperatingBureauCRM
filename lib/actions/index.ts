@@ -108,6 +108,50 @@ export async function importContextAction(): Promise<{
   };
 }
 
+const importLeadsSchema = z.object({
+  stageId: z.string().min(1),
+  owner: z.enum(OWNERS),
+  source: z.enum(SOURCES),
+  leads: z
+    .array(
+      z.object({
+        name: z.string(),
+        company: z.string(),
+        niche: z.string(),
+        links: z.array(
+          z.object({
+            platform: z.enum(LINK_PLATFORMS),
+            url: z.string(),
+            label: z.string().nullable().optional(),
+          }),
+        ),
+      }),
+    )
+    .min(1)
+    .max(100),
+});
+
+/** One transaction for the whole batch: all of it lands, or none of it does. */
+export async function importLeadsAction(
+  input: unknown,
+): Promise<repo.ImportResult> {
+  const parsed = importLeadsSchema.parse(input);
+  const result = await repo.importLeads(parsed);
+  refresh();
+  return result;
+}
+
+export async function lastImportBatchAction(): Promise<repo.ImportBatchSummary | null> {
+  return repo.lastImportBatch();
+}
+
+/** Removes the most recent import, and only the parts of it you have not worked. */
+export async function undoLastImportAction(): Promise<repo.UndoResult> {
+  const result = await repo.undoLastImport();
+  refresh();
+  return result;
+}
+
 const addLinkSchema = z.object({
   contactId: z.string().min(1),
   platform: z.enum(LINK_PLATFORMS).optional(),

@@ -567,6 +567,105 @@ async function main() {
   check("nothing is left pending after a backfill",
     (await repo.countUnbackfilled()) === 0, await repo.countUnbackfilled());
 
+  // --- bulk import ------------------------------------------------------------
+  const importable = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      name: `Imported ${i}`,
+      company: "",
+      niche: "Test niche",
+      links: [
+        { platform: "instagram" as const, url: `https://www.instagram.com/imported${i}/` },
+        { platform: "website" as const, url: `https://imported${i}.com/` },
+      ],
+    }));
+
+  // Atomic: a batch that cannot complete must leave nothing behind at all.
+  const contactsBefore = (await repo.listContacts({})).total;
+  let threw = false;
+  try {
+    await repo.importLeads({
+      leads: importable(3),
+      stageId: "stage_does_not_exist",
+      owner: "riley",
+      source: "ig_dm",
+    });
+  } catch {
+    threw = true;
+  }
+  check("an import into a stage that does not exist throws", threw);
+  check("and leaves no contacts behind",
+    (await repo.listContacts({})).total === contactsBefore,
+    `${contactsBefore} -> ${(await repo.listContacts({})).total}`);
+
+  // Its own stage: the suite deletes C further up, and an import test that
+  // depends on the order of unrelated tests is a test that will lie later.
+  const importStage = await repo.createStage({
+    pipelineId: pipeline.id,
+    name: "Import Target",
+    staleAfterDays: null,
+  });
+
+  const batch = await repo.importLeads({
+    leads: importable(4),
+    stageId: importStage.id,
+    owner: "kavi",
+    source: "cold_email",
+  });
+  check("the import reports its batch and count",
+    batch.created === 4 && batch.batchId.startsWith("imp_"), batch);
+
+  const importedCards = (await repo.listDealCards({ pipelineId: pipeline.id }))
+    .filter((card) => card.importBatchId === batch.batchId);
+  check("every lead carries the shared batch id", importedCards.length === 4);
+  check("they all landed in the chosen stage",
+    importedCards.every((card) => card.stageId === importStage.id));
+  check("each one carries its parsed links",
+    importedCards.every((card) => card.contact.links.length === 2),
+    importedCards.map((card) => card.contact.links.length));
+  check("the niche is carried onto the contact",
+    importedCards.every((card) => card.contact.niche === "Test niche"));
+  check("and the history says it was a bulk import",
+    (await repo.listActivities(importedCards[0]!.id)).some((a) => a.type === "imported"));
+
+  const summary = await repo.lastImportBatch();
+  check("the last batch is findable, with its count and stage",
+    summary?.batchId === batch.batchId && summary.count === 4 &&
+      summary.stageName === "Import Target",
+    summary);
+
+  // Touch three of the four in different ways. Each must survive the undo.
+  const [movedLead, noted, binnedOne, untouched] = importedCards;
+  if (!movedLead || !noted || !binnedOne || !untouched) throw new Error("import setup");
+  await repo.moveDeal({ dealId: movedLead.id, toStageId: b.id, targetIndex: 0 });
+  await repo.createNote({ dealId: noted.id, body: "Spoke to them", author: "riley" });
+  await repo.binDeal(binnedOne.id);
+
+  const undone = await repo.undoLastImport();
+  check("undo removes only the untouched lead", undone.removed === 1, undone);
+  check("and names the three it left, with reasons",
+    undone.kept.length === 3, undone.kept);
+  check("a lead moved to another stage is kept",
+    undone.kept.some((k) => k.reason === "moved to another stage"), undone.kept);
+  check("a lead with a note is kept",
+    undone.kept.some((k) => k.reason === "has notes"), undone.kept);
+  check("a lead in the bin is kept",
+    undone.kept.some((k) => k.reason === "is in the bin"), undone.kept);
+  check("the untouched lead is gone",
+    (await repo.getDeal(untouched.id)) === null);
+  check("its contact went with it",
+    (await repo.getContact(untouched.contactId)) === null);
+  check("the worked leads are still there",
+    (await repo.getDeal(movedLead.id)) !== null &&
+      (await repo.getDeal(noted.id)) !== null &&
+      (await repo.getDeal(binnedOne.id)) !== null);
+
+  check("undoing again with nothing to undo is safe",
+    (await repo.undoLastImport()).removed === 0);
+
+  // Leave the bin as this block found it: the bin's own checks run below and
+  // count what is in it.
+  await repo.restoreDeal(binnedOne.id);
+
   // --- the bin ---------------------------------------------------------------
   // The invariant worth protecting is not that binning works, but that a binned
   // deal disappears from every surface at once. A deal that vanished from the

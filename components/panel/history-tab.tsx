@@ -60,6 +60,11 @@ function describe(entry: HistoryEntry, stages: Stage[]): string {
   switch (activity.type) {
     case "created":
       return `Created in ${stageName(stages, activity.toStageId)}`;
+    case "imported":
+      // The batch is what makes one import findable as a group later.
+      return `Bulk imported into ${stageName(stages, activity.toStageId)}${
+        meta["batchId"] ? ` (batch ${String(meta["batchId"]).slice(-6)})` : ""
+      }`;
     case "stage_changed":
       return `${stageName(stages, activity.fromStageId)} to ${stageName(stages, activity.toStageId)}`;
     case "sequence_step_changed": {

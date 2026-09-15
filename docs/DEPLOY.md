@@ -225,6 +225,24 @@ requested, and some corporate mail scanners burn a code by following the link
 first; "This One-Time PIN has already been used" means that happened, and
 requesting a new one works.
 
+**Error 1033, "Cloudflare Tunnel error".** Cloudflare has the hostname and
+knows it is a tunnel, but no cloudflared is connected to serve it. The machine
+is not running. Check `fly logs` and `fly status`; `fly machine start` brings it
+back.
+
+The usual cause on a new account is the Fly trial, which stops a machine after
+five minutes and says so in the logs:
+
+```
+Trial machine stopping. To run for longer than 5m0s,
+add a credit card by visiting https://fly.io/trial.
+```
+
+Nothing is wrong with the tunnel when that happens. Add a card at
+<https://fly.io/trial> and the machine runs continuously: this app publishes no
+Fly service, so there is no `auto_stop_machines` to trip and nothing else that
+stops it on its own.
+
 **The site 502s.** Usually the machine restarted and cloudflared has not
 reconnected yet. `fly logs` will say. The entrypoint deliberately kills the
 machine if either the app or the tunnel dies, rather than leaving a half-running

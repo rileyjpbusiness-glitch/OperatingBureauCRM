@@ -13,7 +13,12 @@ import { contacts, deals, notes, pipelines, stages } from "@/lib/db/schema";
 import { writeActivity, type DbHandle } from "./activity-log";
 import { createContact, type ContactInput } from "./contacts";
 import { combine, dealFilterConditions } from "./filters";
-import { addLink, linkFromHandle, linksByContactId } from "./links";
+import {
+  addLink,
+  linkFromHandle,
+  linksByContactId,
+  markLinksBackfilled,
+} from "./links";
 import { tagsByContactId } from "./tags";
 import type {
   Contact,
@@ -228,6 +233,8 @@ export async function createContactWithDeal(input: {
       label: derived.label,
     });
   }
+  // Settled either way: the handle became a link, or there was none to convert.
+  await markLinksBackfilled(contact.id);
 
   const deal = await createDeal({
     contactId: contact.id,

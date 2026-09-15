@@ -142,6 +142,20 @@ export function linkFromHandle(raw: string | null | undefined): {
 }
 
 /**
+ * Marks a contact as needing nothing further from the backfill.
+ *
+ * Called once whoever created the contact has written its links, so the flag
+ * always means "there is no handle here waiting to be converted" rather than
+ * "the boot process has not looked at this one yet".
+ */
+export async function markLinksBackfilled(contactId: string): Promise<void> {
+  db.update(contacts)
+    .set({ linksBackfilled: true })
+    .where(eq(contacts.id, contactId))
+    .run();
+}
+
+/**
  * Turns each contact's old instagram_handle into a link row, once.
  *
  * Runs on every boot and does nothing after the first: a contact is skipped if

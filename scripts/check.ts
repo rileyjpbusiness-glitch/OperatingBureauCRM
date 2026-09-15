@@ -67,11 +67,131 @@ function checkTimezone(): void {
     dates.formatDateTime(new Date("2026-09-21T13:00:00Z")) === "Sep 21, 9:00 AM");
 }
 
+/**
+ * The link rules, on their own.
+ *
+ * These are pure functions the importer, the backfill, the drawer and the card
+ * all lean on, and until now every one of them was only exercised through
+ * something else. Both bugs Part 1 shipped were in here and were found by a
+ * test of a different thing.
+ */
+function checkLinks(links: typeof import("../lib/links")): void {
+  const {
+    classifyUrl, isFunnelHost, ensureProtocol, parseUrl, shortenLink,
+    normalizeInstagramUrl, sortLinks, firstInstagram,
+  } = links;
+
+  // --- classification, one case per row of the spec's table ---
+  const classifications: [string, string][] = [
+    ["https://www.instagram.com/jonahhodges_", "instagram"],
+    ["https://x.com/jonahhodges_", "x"],
+    ["https://twitter.com/jonahhodges_", "x"],
+    ["https://www.youtube.com/@jonahhodges_", "youtube"],
+    ["https://youtu.be/abc123", "youtube"],
+    ["https://www.linkedin.com/in/jonahhodges/", "linkedin"],
+    ["https://www.tiktok.com/@jonahhodges", "tiktok"],
+    ["https://www.facebook.com/jonahhodges", "facebook"],
+    ["https://fb.com/jonahhodges", "facebook"],
+    ["https://www.wholesalenetwork.io/home", "website"],
+  ];
+  for (const [url, expected] of classifications) {
+    check(`classify ${url.replace(/^https:\/\//, "")} as ${expected}`,
+      classifyUrl(url) === expected, classifyUrl(url));
+  }
+  check("garbage classifies as other, rather than throwing",
+    classifyUrl("not a url at all") === "other" || classifyUrl("not a url at all") === "website",
+    classifyUrl("not a url at all"));
+
+  // --- funnel hosts, matched on substring so subdomains count ---
+  for (const host of [
+    "calendly.com", "onlyamz.typeform.com", "www.skool.com", "whop.com",
+    "linktr.ee", "beacons.ai", "mailchi.mp", "docs.google.com",
+    "manifestfive.notion.site", "the-wholesale-underground.mykajabi.com",
+    "gumroad.com", "stan.store", "go.hlpages.io",
+  ]) {
+    check(`${host} is a funnel host`, isFunnelHost(host));
+  }
+  check("a prospect's own domain is not a funnel host",
+    !isFunnelHost("wholesalenetwork.io"));
+  check("a funnel host classifies as other, never website",
+    classifyUrl("https://calendly.com/d/abc/call") === "other");
+
+  // --- protocol repair ---
+  check("a bare domain gains https", ensureProtocol("wholesalenetwork.io") === "https://wholesalenetwork.io");
+  check("an http URL is left alone", ensureProtocol("http://example.com") === "http://example.com");
+  check("an https URL is left alone", ensureProtocol("https://example.com") === "https://example.com");
+  check("empty stays empty", ensureProtocol("   ") === "");
+  check("unparseable text yields no URL", parseUrl("banana") === null || parseUrl("banana")?.hostname === "banana");
+  check("a protocol with no host yields no URL", parseUrl("https://") === null);
+
+  // --- shortening, which is what the drawer and the card actually render ---
+  const shortenings: [string, string, string][] = [
+    ["instagram", "https://www.instagram.com/jonahhodges_", "@jonahhodges_"],
+    ["instagram", "https://www.instagram.com/luke.rice_/", "@luke.rice_"],
+    ["youtube", "https://www.youtube.com/@jonahhodges_", "@jonahhodges_"],
+    ["youtube", "https://www.youtube.com/@PatHarris/featured", "@PatHarris"],
+    ["x", "https://x.com/jonahhodges_", "@jonahhodges_"],
+    ["tiktok", "https://www.tiktok.com/@someone", "@someone"],
+    ["linkedin", "https://www.linkedin.com/in/jonahhodges/", "/in/jonahhodges"],
+    ["facebook", "https://www.facebook.com/someone", "/someone"],
+    ["website", "https://www.wholesalenetwork.io/home", "wholesalenetwork.io/home"],
+    ["website", "https://operationamz.com/", "operationamz.com"],
+    ["other", "https://www.skool.com/amazonfbaremote/about", "skool.com/amazonfbaremote/about"],
+  ];
+  for (const [platform, url, expected] of shortenings) {
+    const got = shortenLink({ platform: platform as never, url });
+    check(`shorten ${platform}: ${expected}`, got === expected, got);
+  }
+  check("a raw channel id shows its path, not a fake handle",
+    shortenLink({ platform: "youtube", url: "https://www.youtube.com/channel/UCMXLz9O8f-vNMnFYhMKR9vQ" })
+      === "/channel/UCMXLz9O8f-vNMnFYhMKR9vQ");
+  check("a query string does not leak into the display",
+    shortenLink({ platform: "instagram", url: "https://www.instagram.com/realecomgom?stkn=abc&utm_source=qr" })
+      === "@realecomgom");
+  check("what cannot be parsed is shown exactly as typed",
+    shortenLink({ platform: "website", url: "not a url" }) === "not a url");
+
+  // --- the key duplicate detection depends on ---
+  const sameLead = [
+    "https://www.instagram.com/JonahHodges_/",
+    "http://instagram.com/jonahhodges_",
+    "https://www.instagram.com/jonahhodges_?utm_source=qr",
+    "www.instagram.com/jonahhodges_",
+  ];
+  const keys = new Set(sameLead.map((url) => normalizeInstagramUrl(url)));
+  check("every spelling of one Instagram URL normalises to one key",
+    keys.size === 1 && [...keys][0] === "instagram.com/jonahhodges_", [...keys]);
+  check("two different accounts do not collide",
+    normalizeInstagramUrl("https://www.instagram.com/someoneelse/") !== [...keys][0]);
+  check("a non-Instagram URL has no Instagram key",
+    normalizeInstagramUrl("https://www.youtube.com/@jonahhodges_") === null);
+
+  // --- ordering ---
+  const unsorted = [
+    { id: "1", platform: "other" as const, url: "https://skool.com/a" },
+    { id: "2", platform: "instagram" as const, url: "https://instagram.com/second" },
+    { id: "3", platform: "website" as const, url: "https://site.com" },
+    { id: "4", platform: "youtube" as const, url: "https://youtube.com/@a" },
+    { id: "5", platform: "instagram" as const, url: "https://instagram.com/first" },
+  ];
+  check("rows sort into the fixed platform order",
+    sortLinks(unsorted).map((l) => l.platform).join(",") ===
+      "instagram,instagram,youtube,website,other",
+    sortLinks(unsorted).map((l) => l.platform).join(","));
+  check("insertion order survives within a platform",
+    sortLinks(unsorted).filter((l) => l.platform === "instagram").map((l) => l.id).join(",") === "2,5");
+  check("the card takes the first Instagram link",
+    firstInstagram(sortLinks(unsorted))?.id === "2");
+  check("no Instagram link means none to show",
+    firstInstagram([{ id: "9", platform: "website" as const, url: "https://x.io" }]) === null);
+}
+
 async function main() {
   const repo = await import("../lib/repo");
   dates = await import("../lib/dates");
 
   checkTimezone();
+  checkLinks(await import("../lib/links"));
 
   const pipeline = await repo.createPipeline({ name: "Test", slug: "test" });
   const second = await repo.createPipeline({ name: "Next", slug: "next" });
@@ -396,6 +516,56 @@ async function main() {
   });
   check("no handle means no link",
     (await repo.listLinks(bareLead.contact.id)).length === 0);
+
+  // --- links through the repository -------------------------------------------
+  // The spec is explicit that several links of one platform must survive, and
+  // the source docs routinely list two Instagram accounts for one person.
+  const multi = await repo.createContactWithDeal({
+    contact: { firstName: "Multi", lastName: "Link", owner: "riley", source: "ig_dm" },
+    pipelineId: pipeline.id,
+    stageId: a.id,
+  });
+  await repo.addLink({ contactId: multi.contact.id, platform: "instagram", url: "https://www.instagram.com/jaylarosafba/" });
+  await repo.addLink({ contactId: multi.contact.id, platform: "youtube", url: "https://www.youtube.com/@jaylarosafba" });
+  await repo.addLink({ contactId: multi.contact.id, platform: "instagram", url: "https://www.instagram.com/jayslarosa/" });
+  await repo.addLink({ contactId: multi.contact.id, platform: "other", url: "https://www.skool.com/joinamazonfba/about" });
+
+  const multiLinks = await repo.listLinks(multi.contact.id);
+  check("several links of one platform are all kept",
+    multiLinks.filter((l) => l.platform === "instagram").length === 2, multiLinks.length);
+  check("the repository returns them in display order",
+    multiLinks.map((l) => l.platform).join(",") === "instagram,instagram,youtube,other",
+    multiLinks.map((l) => l.platform).join(","));
+  check("insertion order holds within a platform",
+    (multiLinks[0]?.url.includes("jaylarosafba") ?? false) &&
+      (multiLinks[1]?.url.includes("jayslarosa") ?? false),
+    multiLinks.map((l) => l.url));
+
+  const target = multiLinks[0];
+  if (!target) throw new Error("link setup");
+  await repo.updateLink(target.id, { url: "instagram.com/edited" });
+  check("a pasted URL with no protocol gains one on save",
+    (await repo.listLinks(multi.contact.id)).some((l) => l.url === "https://instagram.com/edited"),
+    (await repo.listLinks(multi.contact.id)).map((l) => l.url));
+  await repo.updateLink(target.id, { platform: "website" });
+  check("the platform dropdown re-files a row",
+    (await repo.listLinks(multi.contact.id)).find((l) => l.id === target.id)?.platform === "website");
+
+  const beforeDelete = (await repo.listLinks(multi.contact.id)).length;
+  await repo.deleteLink(target.id);
+  check("the trash icon removes exactly one row",
+    (await repo.listLinks(multi.contact.id)).length === beforeDelete - 1);
+
+  const known = await repo.existingInstagramUrls();
+  check("every Instagram URL on the board is offered for duplicate checks",
+    known.has("instagram.com/jayslarosa"), [...known].slice(0, 4));
+  check("and the set is normalised, not raw",
+    ![...known].some((url) => url.startsWith("http")), [...known].slice(0, 2));
+
+  // A contact with no handle and no links is still settled, so the backfill
+  // does not reconsider it on every boot forever.
+  check("nothing is left pending after a backfill",
+    (await repo.countUnbackfilled()) === 0, await repo.countUnbackfilled());
 
   // --- the bin ---------------------------------------------------------------
   // The invariant worth protecting is not that binning works, but that a binned

@@ -21,6 +21,9 @@ Other scripts:
 | `npm run dev` | Starts the dev server on port 3000 |
 | `npm run seed` | Deletes the database, re-migrates, and reseeds it |
 | `npm run bootstrap` | Creates the two pipelines and their stages in an empty database, and nothing else |
+| `npm run backup` | Downloads a verified snapshot of the deployed database into `backups/` |
+| `npm run snapshot` | Writes a consistent single-file copy of the local database |
+| `npm run verify:backup` | Opens a backup file and reports what is in it |
 | `npm run build` | Applies migrations, then builds (typechecks and lints as part of it) |
 | `npm run start` | Serves the production build |
 | `npm run typecheck` | `tsc --noEmit` |

@@ -176,22 +176,60 @@ fly ssh console -C "npm run seed"
 fly ssh console -C "npm run db:inspect"
 ```
 
-**Backups.** Fly snapshots volumes daily and keeps them five days. To pull the
-database down, take the write-ahead log with it:
+**Backups.**
 
 ```bash
-fly ssh sftp get /data/bureau.db     ./bureau-backup.db
-fly ssh sftp get /data/bureau.db-wal ./bureau-backup.db-wal
+npm run backup
 ```
 
-The app opens SQLite in WAL mode, so a transaction that has committed may still
-live in `bureau.db-wal` rather than in `bureau.db`. Copying the first file alone
-from a running machine can quietly drop the most recent work, and it looks like
-a clean backup. SQLite replays the two together; `-shm` is rebuilt and does not
-need copying.
+That asks the machine to snapshot its own database, downloads it to
+`backups/bureau-<timestamp>.db`, deletes the copy it left on the volume, and
+then opens what it downloaded to check it: integrity, row counts, and how many
+deals are sitting in each stage. A backup nobody has opened is a file, not a
+backup, so the numbers are printed every time.
 
-Worth doing before anything destructive. Five days of automatic snapshots is
-thin cover for the only copy of your pipeline.
+The machine snapshots itself with SQLite's `VACUUM INTO` rather than this
+copying `bureau.db` down, because the app runs in WAL mode. At any moment some
+committed work lives in `bureau.db-wal`, and a copy of the main file alone
+loses it while looking clean. That is not theoretical: writing a row, then
+copying `bureau.db` by itself, produces a file that does not contain the row,
+while a `VACUUM INTO` snapshot taken at the same moment does.
+
+`backups/` is gitignored. Your leads never go near the repository.
+
+Fly also snapshots the volume daily on its own and keeps five days:
+
+```bash
+fly volumes list                      # find the volume id
+fly volumes snapshots list <vol-id>
+```
+
+Five days of automatic snapshots is thin cover for the only copy of your
+pipeline. Run `npm run backup` before anything you would not want to undo.
+
+**Restoring one.** Destructive, and worth reading before starting. The app holds
+the database open, so the file is replaced and the machine restarted
+immediately after.
+
+```bash
+# 1. Send the backup up, alongside the live database rather than over it.
+fly ssh sftp shell -a bureau-crm
+#    then, at the prompt:  put ./backups/bureau-<timestamp>.db /data/restore.db
+
+# 2. Swap it in, keeping the current one rather than deleting it.
+fly ssh console -a bureau-crm -C "sh -c 'mv /data/bureau.db /data/bureau.db.replaced && rm -f /data/bureau.db-wal /data/bureau.db-shm && mv /data/restore.db /data/bureau.db'"
+
+# 3. Restart so the app opens the file you just put there.
+fly machine restart <machine-id> -a bureau-crm
+```
+
+The old database stays at `/data/bureau.db.replaced`, so a restore of the wrong
+file is recoverable by swapping the two names back. Delete it once you have
+confirmed the board looks right.
+
+I could not run step 1 from here, having no Fly access, so confirm the upload
+syntax with `fly ssh sftp --help` before relying on it. Steps 2 and 3 are plain
+shell and flyctl commands used elsewhere in this document.
 
 **Never run two machines.** SQLite has one writer. `fly scale count 1` if you
 ever find more than one.

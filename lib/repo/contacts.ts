@@ -45,9 +45,12 @@ function toRow(input: ContactInput): Contact {
     lastName: input.lastName?.trim() || null,
     company: input.company?.trim() || null,
     instagramHandle: normalizeHandle(input.instagramHandle),
-    // A contact created now gets its links explicitly; there is no handle for
-    // the backfill to convert, so it is already done with this one.
-    linksBackfilled: true,
+    // Left false on purpose, even for contacts created long after the
+    // migration. It means "a handle here has not been turned into a link yet",
+    // which is true of anything created with a handle and no links -- the seed,
+    // the + Lead form -- and the backfill skips a contact that already has
+    // links, so a caller that supplies its own cannot end up with a duplicate.
+    linksBackfilled: false,
     email: input.email?.trim().toLowerCase() || null,
     phone: input.phone?.trim() || null,
     website: input.website?.trim() || null,

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { updateDealAction } from "@/lib/actions";
 import { SEQUENCE_STEP_CARD_LABELS } from "@/lib/db/enums";
+import { firstInstagram, shortenLink } from "@/lib/links";
 import type { DealCard as DealCardModel } from "@/lib/repo/types";
 import {
   contactName,
@@ -18,6 +19,21 @@ import { cn } from "@/lib/utils";
 import { OwnerChip } from "./owner-chip";
 import { PriorityToggle } from "./priority-toggle";
 import { SOURCE_LABELS, SourceIcon } from "./source-icon";
+
+/**
+ * How the name reads on a card. Full name by default; "first" and "last" render
+ * a single token, for when the columns get narrow.
+ */
+const CARD_NAME_DISPLAY: "full" | "first" | "last" = "full";
+
+function cardName(name: string): string {
+  if (CARD_NAME_DISPLAY === "full") return name;
+  const tokens = name.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return name;
+  return CARD_NAME_DISPLAY === "first"
+    ? (tokens[0] ?? name)
+    : (tokens[tokens.length - 1] ?? name);
+}
 
 /**
  * Four lines, one badge, a flame, and a left edge that silts up as the deal
@@ -60,7 +76,9 @@ export function DealCard({
   }
 
   const step = showStep ? card.sequenceStep : null;
-  const org = card.contact.company ?? card.contact.instagramHandle;
+  // Line two is where the lead actually lives, not what their programme is
+  // called. No Instagram link means no line: an empty row reads as broken data.
+  const instagram = firstInstagram(card.contact.links);
   const showAge = card.nextActionAt === null && card.staleness !== "fresh";
 
   return (
@@ -84,7 +102,7 @@ export function DealCard({
 
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-text-1 truncate font-sans text-body font-medium">
-          {contactName(card.contact)}
+          {cardName(contactName(card.contact))}
         </h3>
         <div className="flex shrink-0 items-center gap-1">
           <PriorityToggle on={hot} onToggle={togglePriority} />
@@ -92,13 +110,28 @@ export function DealCard({
         </div>
       </div>
 
-      {org ? (
+      {instagram ? (
         <p
           className="text-text-2 mt-1 flex items-center gap-1.5 font-sans text-tiny"
-          title={`${org} - ${SOURCE_LABELS[card.contact.source]}`}
+          title={SOURCE_LABELS[card.contact.source]}
         >
           <SourceIcon source={card.contact.source} />
-          <span className="truncate">{org}</span>
+          <a
+            href={instagram.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={instagram.url}
+            // The card underneath is both a drag handle and the way the drawer
+            // opens. dnd-kit claims the drag on pointerdown and the drawer
+            // opens on click, so this has to stop both before they start --
+            // without preventing its own default, which is the navigation.
+            onPointerDown={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            className="motion-fast hover:text-text-1 truncate outline-none"
+          >
+            {shortenLink(instagram)}
+          </a>
         </p>
       ) : null}
 

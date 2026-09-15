@@ -49,7 +49,7 @@ file.
 ## Stack
 
 - Next.js 15 (App Router) + React 19, TypeScript in strict mode
-- Tailwind CSS v4, dark-only theme, shadcn/ui component conventions
+- Tailwind CSS v4, dark and light themes, shadcn/ui component conventions
 - SQLite via better-sqlite3, Drizzle ORM, Drizzle Kit migrations
 - Server Actions for every mutation; no separate API layer
 - @dnd-kit for the pipeline board's drag and drop
@@ -159,6 +159,18 @@ the slot, and only once it is past the stage's own threshold. Delivery cards get
 the same treatment, with tight thresholds (Onboarding 3 days, Building 7, Live
 30) because onboarding is exactly where a signed client goes quiet.
 
+**The hot flag is the one thing on a card you set by hand.** Everything else
+the card shows is derived: the badge from the next action date, the left edge
+from time in stage, the dimming from status. `deals.priority` is the operator's
+own judgement that a lead needs attention now, and it is deliberately not
+computed from anything, because the point of it is to say something the board
+cannot work out for itself. A flagged card keeps its own surface and takes a
+wash of the hot signal rather than becoming a red box; it has to stay readable
+next to twenty others. It writes no activity row: every other field in that
+table changes rarely and means something historically, while this is a flag
+flipped while working a list, and logging each flip would bury the history it
+sits in.
+
 **Zero is an absence, not a value.** A lead nobody has priced renders no value
 line at all rather than claiming to be worth $0, and empty fields in the detail
 panel are empty slots rather than eight repetitions of "Not set".
@@ -194,9 +206,23 @@ which returns nothing.
 
 The interface is monochrome and colour is earned. There are three non-neutral
 colours in the whole application: `--signal-warm` for due and stale, and for the
-worst converting step; `--signal-hot` for badly overdue; `--signal-good` for won.
-Stage markers, owner chips and tags are all neutral, because a stage's position
-is its identity and a tag is a label.
+worst converting step; `--signal-hot` for badly overdue and for a lead flagged
+hot; `--signal-good` for won. Stage markers, owner chips and tags are all
+neutral, because a stage's position is its identity and a tag is a label.
+
+**Two themes, one palette.** Dark is the default and lives on `:root`; light
+overrides only the values that have to change, under `html[data-theme="light"]`.
+The neutrals invert their order and the three signals are re-tuned rather than
+replaced, because `#e0a03c` on paper is a pale smudge where on the dark ground
+it is a warning. Anything derived from those tokens -- the priority wash, the
+silt edge, the drag shadow, the vignette -- follows without being restated.
+
+The theme does not follow the operating system. Reading it would flip this
+interface to light for anyone whose laptop happens to be set that way, which is
+a change to how the product looks that nobody chose. Light is a decision, taken
+with the toggle in the top bar and remembered per browser. An inline script in
+the root layout sets the attribute before the first paint, so switching costs no
+flash of the wrong ground.
 
 Three families, self-hosted at build time by `next/font`. Prose is Instrument
 Sans, data is IBM Plex Mono, and the five dashboard figures are Instrument

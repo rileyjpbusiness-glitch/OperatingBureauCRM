@@ -65,6 +65,8 @@ export type Deal = {
   valueType: ValueType;
   status: DealStatus;
   lostReason: string | null;
+  /** Flagged hot by hand, as opposed to the staleness the board computes. */
+  priority: boolean;
   owner: Owner;
   nextAction: string | null;
   nextActionAt: Date | null;

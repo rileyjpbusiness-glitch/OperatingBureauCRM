@@ -134,6 +134,12 @@ export const deals = sqliteTable(
     status: text("status", { enum: DEAL_STATUSES }).notNull().default("open"),
     lostReason: text("lost_reason"),
     /**
+     * Flagged hot by hand. Deliberately not derived from anything: age and the
+     * next-action date are already computed and already colour the card, and
+     * this is the operator's own judgement that a deal needs attention now.
+     */
+    priority: integer("priority", { mode: "boolean" }).notNull().default(false),
+    /**
      * Defaults from the contact at creation but is reassignable per deal, so
      * delivery can sit with a different operator than outbound did.
      */
@@ -166,6 +172,7 @@ export const deals = sqliteTable(
     index("deals_next_action_idx").on(t.nextActionAt),
     index("deals_owner_idx").on(t.owner),
     index("deals_sequence_step_idx").on(t.sequenceStep),
+    index("deals_priority_idx").on(t.priority),
   ],
 );
 

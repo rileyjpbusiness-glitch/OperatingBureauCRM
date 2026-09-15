@@ -158,6 +158,8 @@ function insertDeal(handle: DbHandle, input: CreateDealInput): Deal {
     valueType: input.valueType ?? "monthly_recurring",
     status: "open",
     lostReason: null,
+    // Nothing arrives hot; it is something you decide about a lead later.
+    priority: false,
     owner: input.owner,
     nextAction: input.nextAction?.trim() || null,
     nextActionAt: input.nextActionAt ?? null,
@@ -587,6 +589,7 @@ export type DealPatch = {
   nextAction?: string | null;
   nextActionAt?: Date | null;
   lostReason?: string | null;
+  priority?: boolean;
 };
 
 export async function updateDeal(
@@ -608,6 +611,10 @@ export async function updateDeal(
     if (patch.nextActionAt !== undefined) next.nextActionAt = patch.nextActionAt;
     if (patch.lostReason !== undefined)
       next.lostReason = patch.lostReason?.trim() || null;
+    // No activity row. Every other field here changes rarely and means
+    // something historically; this one is a flag an operator flips while
+    // working a list, and logging each flip would bury the history it sits in.
+    if (patch.priority !== undefined) next.priority = patch.priority;
 
     tx.update(deals).set(next).where(eq(deals.id, id)).run();
 

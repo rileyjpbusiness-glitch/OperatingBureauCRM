@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { NewLeadDialog } from "./new-lead-dialog";
+import { ThemeToggle } from "./theme-toggle";
 
 /**
  * Everything the board is driven by lives in the query string, so a filtered
@@ -171,16 +172,16 @@ export function AppShell({
           Stats
         </button>
 
-        {newLeadTarget ? (
-          <Button
-            className="ml-auto shrink-0"
-            onClick={() => setAdding(true)}
-            title="New lead (n)"
-          >
-            <Plus strokeWidth={1.5} />
-            Lead
-          </Button>
-        ) : null}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <ThemeToggle />
+
+          {newLeadTarget ? (
+            <Button onClick={() => setAdding(true)} title="New lead (n)">
+              <Plus strokeWidth={1.5} />
+              Lead
+            </Button>
+          ) : null}
+        </div>
       </header>
 
       <main className="min-h-0 flex-1">{children}</main>

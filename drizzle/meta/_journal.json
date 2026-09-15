@@ -50,6 +50,13 @@
       "when": 1789422233618,
       "tag": "0006_drop_stage_colour",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789483671240,
+      "tag": "0007_deal_priority",
+      "breakpoints": true
     }
   ]
 }

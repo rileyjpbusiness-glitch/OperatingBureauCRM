@@ -60,6 +60,7 @@ const updateDealSchema = z.object({
   nextAction: z.string().nullable().optional(),
   nextActionAt: z.coerce.date().nullable().optional(),
   lostReason: z.string().nullable().optional(),
+  priority: z.boolean().optional(),
 });
 
 export async function updateDealAction(input: unknown): Promise<void> {

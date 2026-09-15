@@ -20,6 +20,7 @@ import { activities, contacts, deals, stages } from "@/lib/db/schema";
 
 import { getBoard } from "./board";
 import { monthlyRecurringCents } from "./money";
+import { notBinned } from "./filters";
 import type { StageWithMetrics } from "./types";
 
 // Re-exported so server callers have one import for the whole subject.
@@ -138,10 +139,14 @@ export async function getKpiDashboard(
     ),
   );
 
+  // A lead is a contact you are actually working, so one whose every deal has
+  // been binned stops counting. Without this, binning a lead would leave the
+  // Leads tile reporting it forever.
   const leadRows = db
-    .select({ at: contacts.createdAt })
+    .selectDistinct({ at: contacts.createdAt })
     .from(contacts)
-    .where(gte(contacts.createdAt, rangeStart))
+    .innerJoin(deals, eq(deals.contactId, contacts.id))
+    .where(and(notBinned(), gte(contacts.createdAt, rangeStart)))
     .all();
 
   const won = wonStageIds();
@@ -161,6 +166,7 @@ export async function getKpiDashboard(
           .innerJoin(deals, eq(deals.id, activities.dealId))
           .where(
             and(
+              notBinned(),
               eq(activities.type, "won"),
               gte(activities.createdAt, rangeStart),
             ),
@@ -181,8 +187,12 @@ export async function getKpiDashboard(
             at: activities.createdAt,
           })
           .from(activities)
+          // Joined only so a binned deal's history stops counting; nothing is
+          // selected from it.
+          .innerJoin(deals, eq(deals.id, activities.dealId))
           .where(
             and(
+              notBinned(),
               inArray(activities.toStageId, [...closing, ...won]),
               gte(activities.createdAt, rangeStart),
             ),

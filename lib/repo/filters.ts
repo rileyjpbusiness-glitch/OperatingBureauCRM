@@ -1,10 +1,23 @@
-import { and, eq, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 
 import { contactTags, contacts, deals, stages } from "@/lib/db/schema";
 
 import type { DealFilters } from "./types";
 
 const MS_PER_DAY = 86_400_000;
+
+/**
+ * A binned deal is off every board and out of every figure. It is still a row,
+ * because the bin can be emptied later and not before, so every read of deals
+ * has to say so explicitly -- there is no "deleted" status to forget about.
+ *
+ * Exported rather than inlined so the places that cannot go through
+ * dealFilterConditions (the metrics joins, the KPI windows, the stage counts)
+ * are visibly using the same rule.
+ */
+export function notBinned(): SQL {
+  return isNull(deals.binnedAt) as SQL;
+}
 
 /**
  * Matches the free-text box against the four things you actually remember about
@@ -43,7 +56,7 @@ export function dealFilterConditions(
   filters: DealFilters,
   now: Date,
 ): SQL[] {
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [notBinned()];
 
   if (filters.search) {
     const predicate = searchPredicate(filters.search);

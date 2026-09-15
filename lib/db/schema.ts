@@ -140,6 +140,12 @@ export const deals = sqliteTable(
      */
     priority: integer("priority", { mode: "boolean" }).notNull().default(false),
     /**
+     * When this deal was dragged into the bin. Non-null means it is off every
+     * board and out of every metric, but still recoverable: the row is only
+     * deleted when the bin is emptied.
+     */
+    binnedAt: integer("binned_at", { mode: "timestamp_ms" }),
+    /**
      * Defaults from the contact at creation but is reassignable per deal, so
      * delivery can sit with a different operator than outbound did.
      */
@@ -173,6 +179,7 @@ export const deals = sqliteTable(
     index("deals_owner_idx").on(t.owner),
     index("deals_sequence_step_idx").on(t.sequenceStep),
     index("deals_priority_idx").on(t.priority),
+    index("deals_binned_idx").on(t.binnedAt),
   ],
 );
 

@@ -3,15 +3,17 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { OWNERS, type Owner } from "@/lib/db/enums";
-import type { Pipeline } from "@/lib/repo/types";
+import type { DealCard, Pipeline } from "@/lib/repo/types";
 import { ownerInitial } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
+import { SearchBox } from "./search-box";
+import { BinButton } from "./bin/bin-button";
+import { BinSheet } from "./bin/bin-sheet";
 import { NewLeadDialog } from "./new-lead-dialog";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -23,20 +25,26 @@ export function AppShell({
   pipelines,
   activeSlug,
   newLeadTarget,
+  binCount,
+  binned,
+  binOpen,
   children,
 }: {
   pipelines: Pipeline[];
   activeSlug: string;
   /** Where the + Lead button drops a new deal. Absent on the dashboard. */
   newLeadTarget?: { pipelineId: string; stageId: string };
+  /** For the dot on the bin. Cheap enough to read on every page. */
+  binCount: number;
+  /** Only loaded when the bin is open; the sheet is the only thing that needs it. */
+  binned: DealCard[];
+  binOpen: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const searchRef = React.useRef<HTMLInputElement>(null);
   const [adding, setAdding] = React.useState(false);
-  const [query, setQuery] = React.useState(params.get("q") ?? "");
 
   const owner = params.get("owner");
   const statsOn = params.get("stats") === "1";
@@ -52,15 +60,6 @@ export function AppShell({
     [params, pathname, router],
   );
 
-  // The search box writes to the URL on a short delay so every keystroke is not
-  // a round trip to SQLite.
-  React.useEffect(() => {
-    const current = params.get("q") ?? "";
-    if (query === current) return;
-    const timer = setTimeout(() => setParam("q", query || null), 250);
-    return () => clearTimeout(timer);
-  }, [query, params, setParam]);
-
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
@@ -69,11 +68,6 @@ export function AppShell({
         target instanceof HTMLTextAreaElement ||
         target?.isContentEditable === true;
 
-      if (event.key === "/" && !typing) {
-        event.preventDefault();
-        searchRef.current?.focus();
-        return;
-      }
       if (event.key === "n" && !typing && !event.metaKey && !event.ctrlKey) {
         if (!newLeadTarget) return;
         event.preventDefault();
@@ -85,6 +79,10 @@ export function AppShell({
         // and the URL-driven detail panel.
         if (typing) {
           (target as HTMLElement).blur();
+          return;
+        }
+        if (params.get("bin")) {
+          setParam("bin", null);
           return;
         }
         if (params.get("deal")) setParam("deal", null);
@@ -124,20 +122,7 @@ export function AppShell({
           ))}
         </nav>
 
-        <div className="relative ml-2 w-56">
-          <Search
-            strokeWidth={1}
-            className="text-text-3 pointer-events-none absolute top-1/2 left-2 size-[var(--icon-size)] -translate-y-1/2"
-          />
-          <Input
-            ref={searchRef}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search    /"
-            className="pl-7"
-            aria-label="Search leads"
-          />
-        </div>
+        <SearchBox />
 
         <div className="flex shrink-0 items-center gap-0.5">
           {OWNERS.map((candidate) => {
@@ -173,6 +158,12 @@ export function AppShell({
         </button>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          {/* The slot is positioned so the board can portal its drop target
+              over this button without disturbing the row. */}
+          <div id="bin-drop-slot" className="relative flex items-center">
+            <BinButton count={binCount} />
+          </div>
+
           <ThemeToggle />
 
           {newLeadTarget ? (
@@ -185,6 +176,8 @@ export function AppShell({
       </header>
 
       <main className="min-h-0 flex-1">{children}</main>
+
+      <BinSheet open={binOpen} binned={binned} />
 
       {newLeadTarget ? (
         <NewLeadDialog

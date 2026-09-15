@@ -66,3 +66,15 @@ export type ChartBucket = {
   end: Date;
   values: Record<KpiMetric, number>;
 };
+
+/**
+ * The one number the outbound operation is run against: builds sent per day.
+ *
+ * A build going out is a deal reaching the first step of the cadence. Everything
+ * before it is preparation and everything after it depends on it, which is why
+ * it is the figure with a target rather than leads created or calls booked.
+ */
+export const DAILY_BUILD_TARGET = 3;
+
+/** How far back the daily strip looks. Two weeks reads at a glance. */
+export const CADENCE_WINDOW_DAYS = 14;

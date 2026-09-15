@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
-import { moveDealAction } from "@/lib/actions";
+import { binDealAction, moveDealAction } from "@/lib/actions";
 import type { Board } from "@/lib/repo/types";
 
 import { DealCard } from "./deal-card";
@@ -112,6 +112,10 @@ export function BoardClient({
         const params = new URLSearchParams(window.location.search);
         params.set("deal", dealId);
         router.push(`?${params.toString()}`, { scroll: false });
+      }}
+      onBin={async (cardId) => {
+        await binDealAction({ dealId: cardId });
+        router.refresh();
       }}
       onMove={async ({ cardId, columnId, index }) => {
         await moveDealAction({

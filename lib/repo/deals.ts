@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
 import {
   FIRST_SEQUENCE_STEP,
@@ -160,6 +160,7 @@ function insertDeal(handle: DbHandle, input: CreateDealInput): Deal {
     lostReason: null,
     // Nothing arrives hot; it is something you decide about a lead later.
     priority: false,
+    binnedAt: null,
     owner: input.owner,
     nextAction: input.nextAction?.trim() || null,
     nextActionAt: input.nextActionAt ?? null,
@@ -703,6 +704,116 @@ export async function createDealsForContacts(input: {
         owner: input.owner,
       }),
     );
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* The bin                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Binning is not deleting. The row stays exactly where it is and gains a date,
+ * which every read of deals then excludes, so the deal leaves every board, every
+ * column count and every figure at once. Emptying the bin is what actually
+ * destroys it.
+ *
+ * The middle state matters: a lead dragged off the board by mistake is a lead
+ * you can get back, and a lead you meant to delete is gone for good only when
+ * you say so a second time.
+ */
+export async function binDeal(id: string): Promise<Deal | null> {
+  return db.transaction((tx) => {
+    const existing = tx.select().from(deals).where(eq(deals.id, id)).get();
+    if (!existing) return null;
+    if (existing.binnedAt) return existing;
+
+    const now = new Date();
+    tx.update(deals)
+      .set({ binnedAt: now, updatedAt: now })
+      .where(eq(deals.id, id))
+      .run();
+    return tx.select().from(deals).where(eq(deals.id, id)).get() ?? null;
+  });
+}
+
+/** Put it back where it was. The stage and position were never touched. */
+export async function restoreDeal(id: string): Promise<Deal | null> {
+  return db.transaction((tx) => {
+    const existing = tx.select().from(deals).where(eq(deals.id, id)).get();
+    if (!existing) return null;
+
+    const now = new Date();
+    tx.update(deals)
+      .set({ binnedAt: null, updatedAt: now })
+      .where(eq(deals.id, id))
+      .run();
+    return tx.select().from(deals).where(eq(deals.id, id)).get() ?? null;
+  });
+}
+
+/** What is in the bin, newest first, which is the order you would look in. */
+export async function listBinnedCards(): Promise<DealCard[]> {
+  const now = new Date();
+  const rows = db
+    .select({ deal: deals, contact: contacts, stage: stages })
+    .from(deals)
+    .innerJoin(contacts, eq(contacts.id, deals.contactId))
+    .innerJoin(stages, eq(stages.id, deals.stageId))
+    .where(isNotNull(deals.binnedAt))
+    .orderBy(desc(deals.binnedAt))
+    .all();
+
+  const tagMap = await tagsByContactId([
+    ...new Set(rows.map((row) => row.contact.id)),
+  ]);
+  return buildCards(rows, tagMap, now);
+}
+
+export async function countBinned(): Promise<number> {
+  const row = db
+    .select({ count: sql<number>`count(*)` })
+    .from(deals)
+    .where(isNotNull(deals.binnedAt))
+    .get();
+  return row?.count ?? 0;
+}
+
+/**
+ * Destroys everything in the bin. Notes, touches, activities and tasks go with
+ * each deal by cascade, and a contact left holding no deals at all goes too:
+ * keeping it would leave a name in the search box that no longer belongs to
+ * anything, and would keep counting toward Leads.
+ *
+ * Returns what it destroyed so the caller can say so rather than guess.
+ */
+export async function emptyBin(): Promise<{ deals: number; contacts: number }> {
+  return db.transaction((tx) => {
+    const doomed = tx
+      .select({ id: deals.id, contactId: deals.contactId })
+      .from(deals)
+      .where(isNotNull(deals.binnedAt))
+      .all();
+    if (doomed.length === 0) return { deals: 0, contacts: 0 };
+
+    tx.delete(deals)
+      .where(inArray(deals.id, doomed.map((row) => row.id)))
+      .run();
+
+    const touched = [...new Set(doomed.map((row) => row.contactId))];
+    const survivors = new Set(
+      tx
+        .select({ contactId: deals.contactId })
+        .from(deals)
+        .where(inArray(deals.contactId, touched))
+        .all()
+        .map((row) => row.contactId),
+    );
+    const orphans = touched.filter((id) => !survivors.has(id));
+    if (orphans.length > 0) {
+      tx.delete(contacts).where(inArray(contacts.id, orphans)).run();
+    }
+
+    return { deals: doomed.length, contacts: orphans.length };
   });
 }
 

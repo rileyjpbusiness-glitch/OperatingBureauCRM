@@ -5,6 +5,7 @@ import { newId } from "@/lib/db/ids";
 import { deals, stages } from "@/lib/db/schema";
 
 import { writeActivity } from "./activity-log";
+import { notBinned } from "./filters";
 import type { Stage } from "./types";
 
 export async function listStages(pipelineId: string): Promise<Stage[]> {
@@ -141,7 +142,7 @@ export async function countDealsInStage(stageId: string): Promise<number> {
   const row = db
     .select({ count: sql<number>`count(*)` })
     .from(deals)
-    .where(eq(deals.stageId, stageId))
+    .where(and(notBinned(), eq(deals.stageId, stageId)))
     .get();
   return row?.count ?? 0;
 }
@@ -161,9 +162,11 @@ export async function deleteStage(
     const remaining = tx
       .select({ count: sql<number>`count(*)` })
       .from(deals)
-      .where(eq(deals.stageId, stageId))
+      .where(and(notBinned(), eq(deals.stageId, stageId)))
       .get();
 
+    // A binned deal in a deleted stage would be unreachable and unrestorable,
+    // so it is moved with the rest rather than counted as blocking.
     if ((remaining?.count ?? 0) > 0) {
       if (!moveDealsToStageId) {
         throw new Error(

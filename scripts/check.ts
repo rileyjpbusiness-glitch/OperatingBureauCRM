@@ -356,6 +356,82 @@ async function main() {
     daily.readings.leads.previous !== 0 ||
     daily.readings.leads.changeRatio === null);
 
+  // --- the bin ---------------------------------------------------------------
+  // The invariant worth protecting is not that binning works, but that a binned
+  // deal disappears from every surface at once. A deal that vanished from the
+  // board while still counting toward a conversion rate would be worse than no
+  // bin at all.
+  const binContact = await repo.createContact({
+    firstName: "Bin", lastName: "Subject", owner: "riley", source: "ig_dm",
+  });
+  const binDeal = await repo.createDeal({
+    contactId: binContact.id, pipelineId: pipeline.id, stageId: a.id,
+    title: "Binned deal", owner: "riley", value: 500_00,
+  });
+
+  const onBoardBefore = (await repo.listDealCards({ pipelineId: pipeline.id }))
+    .some((card) => card.id === binDeal.id);
+  const countBefore = await repo.countDealsInStage(a.id);
+  check("a new deal is on the board", onBoardBefore);
+
+  await repo.binDeal(binDeal.id);
+
+  check("a binned deal leaves the board",
+    !(await repo.listDealCards({ pipelineId: pipeline.id }))
+      .some((card) => card.id === binDeal.id));
+  check("a binned deal leaves its column count",
+    (await repo.countDealsInStage(a.id)) === countBefore - 1);
+  check("a binned deal is in the bin",
+    (await repo.listBinnedCards()).some((card) => card.id === binDeal.id));
+  check("the bin count agrees with the bin",
+    (await repo.countBinned()) === (await repo.listBinnedCards()).length);
+  check("binning records the day it happened",
+    (await repo.listBinnedCards()).find((card) => card.id === binDeal.id)
+      ?.binnedAt instanceof Date);
+  check("a binned deal leaves the search results",
+    !(await repo.suggestLeads("Subject")).some((hit) => hit.dealId === binDeal.id));
+  check("binning twice does not move the date",
+    (await repo.binDeal(binDeal.id))?.binnedAt?.getTime() ===
+      (await repo.listBinnedCards()).find((card) => card.id === binDeal.id)
+        ?.binnedAt?.getTime());
+
+  await repo.restoreDeal(binDeal.id);
+  check("restoring puts it back on the board",
+    (await repo.listDealCards({ pipelineId: pipeline.id }))
+      .some((card) => card.id === binDeal.id));
+  check("restoring puts it back in its stage",
+    (await repo.getDeal(binDeal.id))?.stageId === a.id);
+  check("the bin is empty again", (await repo.countBinned()) === 0);
+
+  await repo.binDeal(binDeal.id);
+  const emptied = await repo.emptyBin();
+  check("emptying reports what it destroyed", emptied.deals === 1, emptied);
+  check("emptying deletes the deal", (await repo.getDeal(binDeal.id)) === null);
+  check("emptying takes a contact left with no deals at all",
+    emptied.contacts === 1 &&
+    (await repo.getContact(binContact.id)) === null, emptied);
+  check("emptying an empty bin is a no-op",
+    (await repo.emptyBin()).deals === 0);
+
+  // --- lead suggestions -------------------------------------------------------
+  const suggestContact = await repo.createContact({
+    firstName: "Tonique", lastName: "Baptiste", owner: "kavi", source: "ig_dm",
+  });
+  await repo.createDeal({
+    contactId: suggestContact.id, pipelineId: pipeline.id, stageId: b.id,
+    title: "Suggestion subject", owner: "kavi",
+  });
+  check("two letters are below the floor and suggest nothing",
+    (await repo.suggestLeads("to")).length === 0);
+  check("three letters find the lead",
+    (await repo.suggestLeads("ton")).some((hit) => hit.name === "Tonique Baptiste"));
+  check("a surname finds them too",
+    (await repo.suggestLeads("bap")).some((hit) => hit.name === "Tonique Baptiste"));
+  check("a suggestion carries where to jump to",
+    (await repo.suggestLeads("ton"))[0]?.pipelineSlug === "test");
+  check("a suggestion names the stage the lead is in",
+    (await repo.suggestLeads("ton"))[0]?.stageName === "B");
+
   console.log(failures === 0 ? "\nall checks passed" : `\n${failures} FAILED`);
   if (failures > 0) process.exit(1);
 }

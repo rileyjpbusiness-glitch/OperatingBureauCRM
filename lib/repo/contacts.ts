@@ -1,5 +1,6 @@
-import { asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
+import { notBinned } from "./filters";
 import type { Owner, Source } from "@/lib/db/enums";
 import { db } from "@/lib/db/client";
 import { newId } from "@/lib/db/ids";
@@ -220,7 +221,7 @@ export async function listContacts(options: {
             status: deals.status,
           })
           .from(deals)
-          .where(inArray(deals.contactId, ids))
+          .where(and(notBinned(), inArray(deals.contactId, ids)))
           .all();
 
   const rollups = new Map<

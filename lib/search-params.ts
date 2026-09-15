@@ -23,6 +23,7 @@ export function readViewState(params: PageSearchParams): {
   filters: DealFilters;
   showStats: boolean;
   dealId: string | null;
+  binOpen: boolean;
 } {
   const search = one(params["q"]);
   const owner = one(params["owner"]);
@@ -34,7 +35,13 @@ export function readViewState(params: PageSearchParams): {
     },
     showStats: one(params["stats"]) === "1",
     dealId: one(params["deal"]) ?? null,
+    binOpen: one(params["bin"]) === "1",
   };
+}
+
+/** The bin is reachable from every page, including the dashboard. */
+export function readBinOpen(params: PageSearchParams): boolean {
+  return one(params["bin"]) === "1";
 }
 
 const PERIOD_VALUES = PERIODS as readonly string[];

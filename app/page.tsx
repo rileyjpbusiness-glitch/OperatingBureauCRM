@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { SourceIcon } from "@/components/board/source-icon";
 import { OwnerChip } from "@/components/board/owner-chip";
+import { CadencePanel } from "@/components/dashboard/cadence-panel";
 import { KpiTile } from "@/components/dashboard/kpi-tile";
 import { PerformanceChart } from "@/components/dashboard/performance-chart";
 import { PeriodToggle } from "@/components/dashboard/period-toggle";
@@ -15,13 +16,20 @@ import {
 import {
   KPI_METRICS,
   PERIOD_COMPARISON,
+  countBinned,
   getBoard,
+  getCadence,
   getDashboard,
   getKpiDashboard,
+  listBinnedCards,
   listPipelines,
   listStages,
 } from "@/lib/repo";
-import { readDashboardState, type PageSearchParams } from "@/lib/search-params";
+import {
+  readBinOpen,
+  readDashboardState,
+  type PageSearchParams,
+} from "@/lib/search-params";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -33,14 +41,20 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<PageSearchParams>;
 }) {
-  const { period, metric } = readDashboardState(await searchParams);
+  const rawSearch = await searchParams;
+  const { period, metric } = readDashboardState(rawSearch);
+  const binOpen = readBinOpen(rawSearch);
 
-  const [pipelines, kpi, attention, board] = await Promise.all([
-    listPipelines(),
-    getKpiDashboard(period),
-    getDashboard(),
-    getBoard("outbound"),
-  ]);
+  const [pipelines, kpi, attention, board, cadence, binCount, binned] =
+    await Promise.all([
+      listPipelines(),
+      getKpiDashboard(period),
+      getDashboard(),
+      getBoard("outbound"),
+      getCadence(),
+      countBinned(),
+      binOpen ? listBinnedCards() : Promise.resolve([]),
+    ]);
 
   // Past a dozen this stops being a queue and becomes wallpaper. The header
   // still reports the real total.
@@ -53,7 +67,13 @@ export default async function DashboardPage({
   );
 
   return (
-    <AppShell pipelines={pipelines} activeSlug="">
+    <AppShell
+      pipelines={pipelines}
+      activeSlug=""
+      binCount={binCount}
+      binned={binned}
+      binOpen={binOpen}
+    >
       <div className="scrollbar-thin h-full overflow-y-auto">
         <div className="border-hairline flex items-center justify-between gap-4 border-b px-4 py-3">
           <h1 className="text-text-1 font-mono text-micro font-semibold tracking-label uppercase">
@@ -73,6 +93,10 @@ export default async function DashboardPage({
             />
           ))}
         </div>
+
+        {/* The operation's own numbers, above the generic ones: this is the
+            board being run to a target, and everything below is reporting. */}
+        <CadencePanel cadence={cadence} />
 
         <div className="grid gap-3 p-4 wide:grid-cols-[1.6fr_1fr]">
           <PerformanceChart series={kpi.series} metric={metric} />

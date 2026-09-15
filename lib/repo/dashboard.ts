@@ -5,6 +5,7 @@ import { db } from "@/lib/db/client";
 import { activities, deals, stages } from "@/lib/db/schema";
 
 import { listDealsNeedingAttention } from "./deals";
+import { notBinned } from "./filters";
 import { monthlyRecurringCents } from "./money";
 import { touchTotalsSince } from "./touches";
 import type { DealCard } from "./types";
@@ -96,6 +97,7 @@ export async function getDashboard(now = new Date()): Promise<Dashboard> {
     .from(deals)
     .where(
       and(
+        notBinned(),
         eq(deals.status, "open"),
         // No lower bound: a follow-up that was due last Tuesday is still due.
         lte(deals.nextActionAt, week.end),
@@ -109,7 +111,7 @@ export async function getDashboard(now = new Date()): Promise<Dashboard> {
   const openDeals = db
     .select({ value: deals.value, valueType: deals.valueType })
     .from(deals)
-    .where(eq(deals.status, "open"))
+    .where(and(notBinned(), eq(deals.status, "open")))
     .all();
 
   const openPipelineMrrCents = openDeals.reduce(

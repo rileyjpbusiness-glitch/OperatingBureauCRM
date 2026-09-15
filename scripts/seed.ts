@@ -529,8 +529,8 @@ async function seedNotes(
     return index === -1 ? undefined : timeline[index];
   };
 
-  const researchAt = at(FUNNEL.researched) ?? at(FUNNEL.newLead) ?? timeline[0];
-  if (researchAt && lead.reached >= FUNNEL.researched) {
+  const researchAt = at(FUNNEL.builtPitch) ?? at(FUNNEL.newLead) ?? timeline[0];
+  if (researchAt && lead.reached >= FUNNEL.builtPitch) {
     await repo.createNote({
       dealId,
       author,
@@ -584,7 +584,8 @@ async function seedTasksAndNextAction(
 
   const actions: Record<number, string> = {
     [FUNNEL.newLead]: "Research the offer and pricing",
-    [FUNNEL.researched]: "Send opening message",
+    [FUNNEL.builtPitch]: "Finalise the pitch",
+    [FUNNEL.finalisedPitch]: "Send the build",
     [FUNNEL.inSequence]: "Send the next follow-up",
     [FUNNEL.replied]: "Send booking link",
     [FUNNEL.callBooked]: "Run the call",

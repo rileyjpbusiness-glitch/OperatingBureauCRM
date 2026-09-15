@@ -67,6 +67,12 @@ export type Deal = {
   lostReason: string | null;
   /** Flagged hot by hand, as opposed to the staleness the board computes. */
   priority: boolean;
+  /**
+   * When this deal was put in the bin, or null while it is on the board. Every
+   * board and figure excludes a deal with a date here; only emptying the bin
+   * deletes the row.
+   */
+  binnedAt: Date | null;
   owner: Owner;
   nextAction: string | null;
   nextActionAt: Date | null;

@@ -21,7 +21,7 @@ Other scripts:
 | `npm run dev` | Starts the dev server on port 3000 |
 | `npm run seed` | Deletes the database, re-migrates, and reseeds it |
 | `npm run bootstrap` | Creates the two pipelines and their stages in an empty database, and nothing else |
-| `npm run build` | Production build (typechecks and lints as part of the build) |
+| `npm run build` | Applies migrations, then builds (typechecks and lints as part of it) |
 | `npm run start` | Serves the production build |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
@@ -93,6 +93,17 @@ second thing to get wrong.
 pipelines and their stages so the boards render instead of 404ing; on a volume
 that already has them it prints what it found and exits. It never writes
 contacts or deals — the production database starts empty of leads on purpose.
+
+## Finding a lead
+
+Typing filters the board, as it always has. Typing three letters also offers the
+leads it matches, and picking one jumps to that card with its detail panel open
+-- which is the faster path when you already know who you are looking for and do
+not want the board narrowed around them. Matching is the same contains-match the
+board filter uses, so the dropdown can never offer a lead the filtered board
+then hides; the ranking is done afterwards, because "starts with" is what
+someone typing a name means and SQL LIKE cannot express the preference in one
+pass. A surname finds someone as readily as a first name.
 
 ## Still to build
 
@@ -170,6 +181,35 @@ next to twenty others. It writes no activity row: every other field in that
 table changes rarely and means something historically, while this is a flag
 flipped while working a list, and logging each flip would bury the history it
 sits in.
+
+**Builds out is the only figure with a target on it.** Three a day, where a
+build going out means a deal reaching the first step of the cadence. Everything
+before that step is preparation and everything after it depends on it, so it is
+the one number the operation is actually run against; leads created and calls
+booked are reporting. The dashboard reads it off the activity log rather than
+the deals' current positions, so a lead that has since replied, been won or been
+lost still counts on the day its build went out, and re-entering the cadence
+does not count twice.
+
+**Reply rate is measured against everyone who got a build, not everyone who
+finished.** Of the deals that reached day one in the window, what share have
+reached any stage past the cadence that is not a dead end -- because a lead who
+answered and went straight to a booked call has replied just as much as one who
+stopped at Replied. Deals still in the cadence stay in the denominator: a rate
+over resolved conversations only flatters itself early and moves for reasons
+that have nothing to do with the messages. The breakdown underneath says how
+many are still in flight, and the sample is printed next to the figure, because
+a rate over four people is not a rate.
+
+**The bin is a middle state, and that is the point.** Dragging a lead onto the
+bin sets a date on the row rather than deleting it, and every read of deals
+excludes a row with a date there, so the lead leaves the board, its column
+count, the funnel, the search box and every figure at once. It stays in the bin
+with the day it was binned until the bin is emptied, which is the only
+irreversible step and asks twice. A lead dragged off by mistake can be put back;
+one you meant to delete is gone only when you say so a second time. Emptying
+also takes any contact left holding no deals at all, because a name in the
+search box that belongs to nothing is worse than no name.
 
 **Zero is an absence, not a value.** A lead nobody has priced renders no value
 line at all rather than claiming to be worth $0, and empty fields in the detail

@@ -19,3 +19,5 @@ export * from "./board";
 export * from "./dashboard";
 export * from "./reset";
 export * from "./kpi";
+export * from "./cadence";
+export * from "./search";

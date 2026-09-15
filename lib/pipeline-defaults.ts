@@ -16,7 +16,11 @@ export type StageSpec = {
 
 export const OUTBOUND_STAGES: StageSpec[] = [
   { name: "New Lead", staleAfterDays: 3 },
-  { name: "Researched", staleAfterDays: 4 },
+  // The pitch is the work: building it, then signing it off as ready to send.
+  { name: "Built Bureau Pitch", staleAfterDays: 4 },
+  // A finished pitch sitting here is the most wasteful place on the board, so
+  // it has the tightest clock before the sequence.
+  { name: "Finalised Bureau Pitch", staleAfterDays: 2 },
   // Sending the first message is day one of the cadence, so contacting and
   // following up are one stage with a sub-board behind it.
   { name: "In Sequence", staleAfterDays: 30, isSequence: true },

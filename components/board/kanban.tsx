@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   DndContext,
   DragOverlay,
@@ -197,6 +198,44 @@ function Banner({ banner }: { banner: KanbanBanner }) {
   );
 }
 
+/** The id the header's bin slot registers under, shared with the board below. */
+export const BIN_DROPPABLE_ID = "__bin__";
+
+/**
+ * The bin lives in the top bar, above the board, but a droppable has to sit
+ * inside the drag context. A portal resolves that: this element is a React
+ * child of the board, so dnd-kit sees it, while its DOM node sits in the
+ * header next to the theme toggle.
+ *
+ * It never takes the pointer. dnd-kit decides what is under the cursor from
+ * measured rectangles rather than hit-testing, so pointer-events-none keeps the
+ * bin button underneath clickable while this still works as a target.
+ */
+function BinDropTarget() {
+  const [slot, setSlot] = React.useState<HTMLElement | null>(null);
+  const { setNodeRef, isOver } = useDroppable({ id: BIN_DROPPABLE_ID });
+
+  // The header renders on the same pass, so the node is there by the time
+  // effects run, but not while this first renders.
+  React.useEffect(() => {
+    setSlot(document.getElementById("bin-drop-slot"));
+  }, []);
+
+  if (!slot) return null;
+
+  return createPortal(
+    <span
+      ref={setNodeRef}
+      aria-hidden
+      className={cn(
+        "motion-fast pointer-events-none absolute -inset-1 rounded-control border",
+        isOver ? "border-signal-hot bg-signal-hot/15" : "border-transparent",
+      )}
+    />,
+    slot,
+  );
+}
+
 export function Kanban({
   id,
   columns,
@@ -205,6 +244,7 @@ export function Kanban({
   renderDragCard,
   onOpen,
   onMove,
+  onBin,
 }: {
   /**
    * Seeds dnd-kit's generated accessibility ids. Without it the counter starts
@@ -223,6 +263,8 @@ export function Kanban({
     columnId: string;
     index: number;
   }) => Promise<void>;
+  /** Dropped on the bin. Same contract: throwing puts the card back. */
+  onBin?: (cardId: string) => Promise<void>;
 }) {
   // The server's columns are the source of truth; this copy is what the board
   // renders so a drop looks instant. It resyncs whenever the server sends a
@@ -283,6 +325,7 @@ export function Kanban({
     const cardId = String(active.id);
     const overId = String(over.id);
     if (banner && overId === banner.id) return;
+    if (overId === BIN_DROPPABLE_ID) return;
 
     setLocal((current) => {
       const from = findColumn(current, cardId);
@@ -319,6 +362,23 @@ export function Kanban({
 
     const cardId = String(active.id);
     const overId = String(over.id);
+
+    if (overId === BIN_DROPPABLE_ID) {
+      if (!onBin) return;
+      const previous = local;
+      setLocal((current) =>
+        current.map((column) => ({
+          ...column,
+          cards: column.cards.filter((candidate) => candidate.id !== cardId),
+        })),
+      );
+      try {
+        await onBin(cardId);
+      } catch {
+        setLocal(previous);
+      }
+      return;
+    }
 
     if (banner && overId === banner.id) {
       const previous = local;
@@ -402,6 +462,8 @@ export function Kanban({
           })}
         </div>
       </div>
+
+      {onBin ? <BinDropTarget /> : null}
 
       <DragOverlay dropAnimation={null}>
         {dragging ? (

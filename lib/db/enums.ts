@@ -99,7 +99,8 @@ export const SEQUENCE_STEPS = [
 export type SequenceStep = (typeof SEQUENCE_STEPS)[number];
 
 export const SEQUENCE_STEP_LABELS: Record<SequenceStep, string> = {
-  day_1: "Day 1",
+  // Day one of the cadence is the day the build goes out.
+  day_1: "Day 1 / Sent Build",
   day_2: "Day 2",
   day_3: "Day 3",
   day_4: "Day 4",
@@ -108,6 +109,19 @@ export const SEQUENCE_STEP_LABELS: Record<SequenceStep, string> = {
   week_3: "Week 3",
   week_4: "Week 4",
   no_answer: "No Answer",
+};
+
+/**
+ * The same steps, shortened for the card.
+ *
+ * "Day 1 / Sent Build" is the right name for the column, where it says what the
+ * step is for. On a card it wraps to a second line and pushes that card out of
+ * line with every other one, and the card is already inside the sequence, so
+ * the qualifier is not telling you anything there.
+ */
+export const SEQUENCE_STEP_CARD_LABELS: Record<SequenceStep, string> = {
+  ...SEQUENCE_STEP_LABELS,
+  day_1: "Day 1",
 };
 
 /** The step a deal lands on when it first enters the sequence. */

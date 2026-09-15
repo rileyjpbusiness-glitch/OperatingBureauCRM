@@ -4,7 +4,13 @@ import { AppShell } from "@/components/app-shell";
 import { BoardClient } from "@/components/board/board-client";
 import { DealPanel } from "@/components/panel/deal-panel";
 import { readViewState, type PageSearchParams } from "@/lib/search-params";
-import { getBoard, getDealDetail, listPipelines } from "@/lib/repo";
+import {
+  countBinned,
+  getBoard,
+  getDealDetail,
+  listBinnedCards,
+  listPipelines,
+} from "@/lib/repo";
 
 // Reads SQLite on every request; there is nothing here to cache.
 export const dynamic = "force-dynamic";
@@ -28,11 +34,13 @@ export default async function PipelinePage({
   searchParams: Promise<PageSearchParams>;
 }) {
   const [{ slug }, rawSearch] = await Promise.all([params, searchParams]);
-  const { filters, showStats, dealId } = readViewState(rawSearch);
+  const { filters, showStats, dealId, binOpen } = readViewState(rawSearch);
 
-  const [pipelines, board] = await Promise.all([
+  const [pipelines, board, binCount, binned] = await Promise.all([
     listPipelines(),
     getBoard(slug, filters),
+    countBinned(),
+    binOpen ? listBinnedCards() : Promise.resolve([]),
   ]);
   if (!board) notFound();
 
@@ -43,6 +51,9 @@ export default async function PipelinePage({
     <AppShell
       pipelines={pipelines}
       activeSlug={slug}
+      binCount={binCount}
+      binned={binned}
+      binOpen={binOpen}
       {...(firstStage
         ? {
             newLeadTarget: {

@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { updateDealAction } from "@/lib/actions";
-import { SEQUENCE_STEP_LABELS } from "@/lib/db/enums";
+import { SEQUENCE_STEP_CARD_LABELS } from "@/lib/db/enums";
 import type { DealCard as DealCardModel } from "@/lib/repo/types";
 import {
   contactName,
@@ -122,7 +122,7 @@ export function DealCard({
         <div className="mt-3 flex items-center justify-between gap-2">
           {step ? (
             <span className="text-text-2 font-mono text-micro font-medium">
-              {SEQUENCE_STEP_LABELS[step]}
+              {SEQUENCE_STEP_CARD_LABELS[step]}
             </span>
           ) : (
             <span />

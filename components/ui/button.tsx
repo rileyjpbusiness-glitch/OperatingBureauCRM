@@ -17,6 +17,10 @@ const buttonVariants = cva(
         outline:
           "border border-hairline text-text-2 font-sans text-tiny hover:bg-surface-3 hover:text-text-1",
         ghost: "text-text-2 font-sans text-tiny hover:bg-surface-3 hover:text-text-1",
+        // The only filled colour any control gets, and only for the one action
+        // in the application that destroys something.
+        destructive:
+          "bg-signal-hot text-ground font-sans text-tiny font-medium hover:bg-signal-hot/90",
       },
       size: {
         default: "h-7 px-2.5 [&_svg]:size-3.5",

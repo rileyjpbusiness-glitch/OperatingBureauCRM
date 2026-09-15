@@ -57,6 +57,20 @@
       "when": 1789483671240,
       "tag": "0007_deal_priority",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789490635860,
+      "tag": "0008_deal_bin",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1789490636860,
+      "tag": "0009_bureau_pitch_stages",
+      "breakpoints": true
     }
   ]
 }

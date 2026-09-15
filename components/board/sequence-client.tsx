@@ -3,7 +3,11 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
-import { moveDealAction, setSequenceStepAction } from "@/lib/actions";
+import {
+  binDealAction,
+  moveDealAction,
+  setSequenceStepAction,
+} from "@/lib/actions";
 import { isDueOrOverdue } from "@/lib/dates";
 import type { SequenceStep } from "@/lib/db/enums";
 import type { SequenceBoard, Stage } from "@/lib/repo/types";
@@ -149,6 +153,10 @@ export function SequenceClient({
         const params = new URLSearchParams(window.location.search);
         params.set("deal", dealId);
         router.push(`?${params.toString()}`, { scroll: false });
+      }}
+      onBin={async (cardId) => {
+        await binDealAction({ dealId: cardId });
+        router.refresh();
       }}
       onMove={async ({ cardId, columnId, index }) => {
         if (columnId === REPLIED_DROP_ID) {

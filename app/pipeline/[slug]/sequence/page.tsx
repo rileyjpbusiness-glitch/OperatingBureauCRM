@@ -7,8 +7,10 @@ import { SequenceClient } from "@/components/board/sequence-client";
 import { DealPanel } from "@/components/panel/deal-panel";
 import { readViewState, type PageSearchParams } from "@/lib/search-params";
 import {
+  countBinned,
   getDealDetail,
   getSequenceBoard,
+  listBinnedCards,
   listPipelines,
   listStages,
 } from "@/lib/repo";
@@ -25,11 +27,13 @@ export default async function SequencePage({
   searchParams: Promise<PageSearchParams>;
 }) {
   const [{ slug }, rawSearch] = await Promise.all([params, searchParams]);
-  const { filters, dealId } = readViewState(rawSearch);
+  const { filters, dealId, binOpen } = readViewState(rawSearch);
 
-  const [pipelines, board] = await Promise.all([
+  const [pipelines, board, binCount, binned] = await Promise.all([
     listPipelines(),
     getSequenceBoard(slug, filters),
+    countBinned(),
+    binOpen ? listBinnedCards() : Promise.resolve([]),
   ]);
   if (!board) notFound();
 
@@ -43,7 +47,13 @@ export default async function SequencePage({
   const detail = dealId ? await getDealDetail(dealId) : null;
 
   return (
-    <AppShell pipelines={pipelines} activeSlug={slug}>
+    <AppShell
+      pipelines={pipelines}
+      activeSlug={slug}
+      binCount={binCount}
+      binned={binned}
+      binOpen={binOpen}
+    >
       <div className="flex h-full flex-col">
         <div className="border-hairline flex h-9 shrink-0 items-center gap-2.5 border-b px-4">
           <Link

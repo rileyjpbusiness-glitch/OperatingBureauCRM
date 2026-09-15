@@ -74,6 +74,48 @@ export async function updateDealAction(input: unknown): Promise<void> {
   refresh();
 }
 
+const suggestSchema = z.object({ term: z.string() });
+
+/**
+ * Typeahead for the search box. A read rather than a mutation, but it goes
+ * through an action for the same reason every other query does: the repository
+ * is server-only and the browser never gets a database handle.
+ */
+export async function suggestLeadsAction(
+  input: unknown,
+): Promise<repo.LeadSuggestion[]> {
+  const { term } = suggestSchema.parse(input);
+  return repo.suggestLeads(term);
+}
+
+const binSchema = z.object({ dealId });
+
+/**
+ * Off the board but not destroyed. The board rolls itself back if this throws,
+ * so a failed drop leaves the card where it was rather than vanishing.
+ */
+export async function binDealAction(input: unknown): Promise<void> {
+  const parsed = binSchema.parse(input);
+  await repo.binDeal(parsed.dealId);
+  refresh();
+}
+
+export async function restoreDealAction(input: unknown): Promise<void> {
+  const parsed = binSchema.parse(input);
+  await repo.restoreDeal(parsed.dealId);
+  refresh();
+}
+
+/** Destroys everything in the bin. There is no undo past this point. */
+export async function emptyBinAction(): Promise<{
+  deals: number;
+  contacts: number;
+}> {
+  const result = await repo.emptyBin();
+  refresh();
+  return result;
+}
+
 const updateContactSchema = z.object({
   contactId: z.string().min(1),
   firstName: z.string().min(1).optional(),

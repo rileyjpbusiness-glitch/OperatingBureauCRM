@@ -11,6 +11,15 @@ import { PIPELINE_DEFAULTS } from "../lib/pipeline-defaults";
 async function main(): Promise<void> {
   const repo = await import("../lib/repo");
 
+  // Runs before the early return: a database that already has its pipelines is
+  // exactly the one that needs its handles turning into links.
+  const backfill = await repo.backfillLinks();
+  if (backfill.scanned > 0) {
+    console.log(
+      `Backfilled links for ${backfill.scanned} contact(s); ${backfill.linked} had a handle to convert.`,
+    );
+  }
+
   const existing = await repo.listPipelines();
   if (existing.length > 0) {
     console.log(

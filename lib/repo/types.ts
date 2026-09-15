@@ -10,6 +10,7 @@ import type {
   TouchOutcome,
   ValueType,
 } from "@/lib/db/enums";
+import type { LeadLink } from "@/lib/links";
 
 export type Pipeline = {
   id: string;
@@ -51,9 +52,17 @@ export type Contact = {
   source: Source;
   owner: Owner;
   notesSummary: string | null;
+  /**
+   * Set once instagramHandle has been turned into a link row. The handle column
+   * is kept and no longer rendered anywhere.
+   */
+  linksBackfilled: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
+
+/** A contact with its links attached, which is what every screen actually wants. */
+export type ContactWithLinks = Contact & { links: LeadLink[] };
 
 export type Deal = {
   id: string;
@@ -93,7 +102,7 @@ export type Staleness = "fresh" | "stale" | "critical";
 
 /** A deal plus everything the board card renders, in one object. */
 export type DealCard = Deal & {
-  contact: Contact;
+  contact: ContactWithLinks;
   tags: Tag[];
   daysInStage: number;
   staleness: Staleness;

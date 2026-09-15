@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import {
+  LINK_PLATFORMS,
   OWNERS,
   SEQUENCE_STEPS,
   SOURCES,
@@ -71,6 +72,37 @@ export async function updateDealAction(input: unknown): Promise<void> {
       ? {}
       : { value: Math.round(valueDollars * 100) }),
   });
+  refresh();
+}
+
+const addLinkSchema = z.object({
+  contactId: z.string().min(1),
+  platform: z.enum(LINK_PLATFORMS).optional(),
+  url: z.string().optional(),
+});
+
+export async function addLinkAction(input: unknown): Promise<void> {
+  const parsed = addLinkSchema.parse(input);
+  await repo.addLink(parsed);
+  refresh();
+}
+
+const updateLinkSchema = z.object({
+  linkId: z.string().min(1),
+  platform: z.enum(LINK_PLATFORMS).optional(),
+  url: z.string().optional(),
+  label: z.string().nullable().optional(),
+});
+
+export async function updateLinkAction(input: unknown): Promise<void> {
+  const { linkId, ...patch } = updateLinkSchema.parse(input);
+  await repo.updateLink(linkId, patch);
+  refresh();
+}
+
+export async function deleteLinkAction(input: unknown): Promise<void> {
+  const { linkId } = z.object({ linkId: z.string().min(1) }).parse(input);
+  await repo.deleteLink(linkId);
   refresh();
 }
 

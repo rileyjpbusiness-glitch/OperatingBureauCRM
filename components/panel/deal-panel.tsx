@@ -36,6 +36,7 @@ import {
 
 import { HistoryTab } from "./history-tab";
 import { InlineField } from "./inline-field";
+import { LinksSection } from "./links-section";
 import { NotesTab } from "./notes-tab";
 
 const VALUE_TYPE_LABELS = {
@@ -204,14 +205,9 @@ export function DealPanel({ detail }: { detail: DealDetail | null }) {
               Details
             </summary>
             <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-              <Row label="Handle">
-                <InlineField
-                  value={contact.instagramHandle ?? ""}
-                  onSave={(value) =>
-                    saveContact({ instagramHandle: value || null })
-                  }
-                />
-              </Row>
+              {/* Replaces the old HANDLE row. The handle column is still on the
+                  contact; nothing reads it any more. */}
+              <LinksSection contactId={contact.id} links={contact.links} />
               <Row label="Email">
                 <InlineField
                   type="email"

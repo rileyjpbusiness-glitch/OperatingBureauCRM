@@ -12,6 +12,7 @@ import {
 import {
   ACTIVITY_TYPES,
   DEAL_STATUSES,
+  LINK_PLATFORMS,
   OWNERS,
   SEQUENCE_STEPS,
   SOURCES,
@@ -100,6 +101,15 @@ export const contacts = sqliteTable(
     source: text("source", { enum: SOURCES }).notNull(),
     owner: text("owner", { enum: OWNERS }).notNull(),
     notesSummary: text("notes_summary"),
+    /**
+     * Set once the contact's old instagram_handle has been turned into a row in
+     * contact_links. instagram_handle itself is kept and never read by the UI
+     * again, so the backfill can be re-run against a restored backup without
+     * duplicating anything.
+     */
+    linksBackfilled: integer("links_backfilled", { mode: "boolean" })
+      .notNull()
+      .default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -310,9 +320,51 @@ export const stagesRelations = relations(stages, ({ one, many }) => ({
   deals: many(deals),
 }));
 
+/**
+ * A lead's links: Instagram, YouTube, their site, whatever else the doc listed.
+ *
+ * A table rather than a JSON column on contacts, because the importer has to
+ * ask "is this Instagram URL already on the board" across every lead, and that
+ * is a query here and a full scan and parse there. The repository hands the UI
+ * a plain `links` array, so nothing above lib/repo knows the difference.
+ *
+ * Multiple links of the same platform are expected, not a mistake: the source
+ * docs routinely list two Instagram accounts or two YouTube channels for one
+ * person.
+ */
+export const contactLinks = sqliteTable(
+  "contact_links",
+  {
+    id: text("id").primaryKey(),
+    contactId: text("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    platform: text("platform", { enum: LINK_PLATFORMS }).notNull(),
+    url: text("url").notNull(),
+    /** Only used when platform is "other"; defaults to the hostname. */
+    label: text("label"),
+    /** Insertion order within a platform. Display order comes from lib/links. */
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("contact_links_contact_idx").on(t.contactId, t.position),
+    // Duplicate detection scans this: "does any lead already have this URL".
+    index("contact_links_platform_idx").on(t.platform),
+  ],
+);
+
+export const contactLinksRelations = relations(contactLinks, ({ one }) => ({
+  contact: one(contacts, {
+    fields: [contactLinks.contactId],
+    references: [contacts.id],
+  }),
+}));
+
 export const contactsRelations = relations(contacts, ({ many }) => ({
   deals: many(deals),
   contactTags: many(contactTags),
+  links: many(contactLinks),
 }));
 
 export const dealsRelations = relations(deals, ({ one, many }) => ({

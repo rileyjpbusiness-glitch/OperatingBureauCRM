@@ -13,9 +13,11 @@ import { contacts, deals, notes, pipelines, stages } from "@/lib/db/schema";
 import { writeActivity, type DbHandle } from "./activity-log";
 import { createContact, type ContactInput } from "./contacts";
 import { combine, dealFilterConditions } from "./filters";
+import { linksByContactId } from "./links";
 import { tagsByContactId } from "./tags";
 import type {
   Contact,
+  ContactWithLinks,
   Deal,
   DealCard,
   DealFilters,
@@ -51,12 +53,15 @@ function buildCards(
   rows: { deal: Deal; contact: Contact; stage: Stage }[],
   tagMap: Map<string, Tag[]>,
   now: Date,
+  linkMap: Map<string, ContactWithLinks["links"]> = new Map(),
 ): DealCard[] {
   return rows.map(({ deal, contact, stage }) => {
     const days = daysInStage(deal.stageEnteredAt, now);
     return {
       ...deal,
-      contact,
+      // Links travel with the contact so the card and the drawer read the same
+      // object rather than each fetching their own.
+      contact: { ...contact, links: linkMap.get(contact.id) ?? [] },
       tags: tagMap.get(contact.id) ?? [],
       daysInStage: days,
       staleness: stalenessFor(days, stage.staleAfterDays),
@@ -94,10 +99,12 @@ export async function listDealCards(options: {
     .orderBy(asc(stages.position), asc(deals.position))
     .all();
 
-  const tagMap = await tagsByContactId([
-    ...new Set(rows.map((row) => row.contact.id)),
+  const contactIds = [...new Set(rows.map((row) => row.contact.id))];
+  const [tagMap, linkMap] = await Promise.all([
+    tagsByContactId(contactIds),
+    linksByContactId(contactIds),
   ]);
-  return buildCards(rows, tagMap, now);
+  return buildCards(rows, tagMap, now, linkMap);
 }
 
 export async function getDealCard(id: string): Promise<DealCard | null> {
@@ -111,8 +118,11 @@ export async function getDealCard(id: string): Promise<DealCard | null> {
     .get();
   if (!row) return null;
 
-  const tagMap = await tagsByContactId([row.contact.id]);
-  return buildCards([row], tagMap, now)[0] ?? null;
+  const [tagMap, linkMap] = await Promise.all([
+    tagsByContactId([row.contact.id]),
+    linksByContactId([row.contact.id]),
+  ]);
+  return buildCards([row], tagMap, now, linkMap)[0] ?? null;
 }
 
 /** Next free position at the top of a stage. */
@@ -763,10 +773,12 @@ export async function listBinnedCards(): Promise<DealCard[]> {
     .orderBy(desc(deals.binnedAt))
     .all();
 
-  const tagMap = await tagsByContactId([
-    ...new Set(rows.map((row) => row.contact.id)),
+  const contactIds = [...new Set(rows.map((row) => row.contact.id))];
+  const [tagMap, linkMap] = await Promise.all([
+    tagsByContactId(contactIds),
+    linksByContactId(contactIds),
   ]);
-  return buildCards(rows, tagMap, now);
+  return buildCards(rows, tagMap, now, linkMap);
 }
 
 export async function countBinned(): Promise<number> {

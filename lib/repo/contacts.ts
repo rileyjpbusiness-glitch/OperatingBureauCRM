@@ -45,6 +45,9 @@ function toRow(input: ContactInput): Contact {
     lastName: input.lastName?.trim() || null,
     company: input.company?.trim() || null,
     instagramHandle: normalizeHandle(input.instagramHandle),
+    // A contact created now gets its links explicitly; there is no handle for
+    // the backfill to convert, so it is already done with this one.
+    linksBackfilled: true,
     email: input.email?.trim().toLowerCase() || null,
     phone: input.phone?.trim() || null,
     website: input.website?.trim() || null,

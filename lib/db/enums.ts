@@ -126,3 +126,20 @@ export const SEQUENCE_STEP_CARD_LABELS: Record<SequenceStep, string> = {
 
 /** The step a deal lands on when it first enters the sequence. */
 export const FIRST_SEQUENCE_STEP: SequenceStep = "day_1";
+
+/**
+ * The platforms a lead's links can be filed under, in the order the drawer
+ * shows them. Here rather than in lib/links so the schema can reach it without
+ * a path alias, which drizzle-kit cannot resolve when it loads the schema.
+ */
+export const LINK_PLATFORMS = [
+  "instagram",
+  "x",
+  "youtube",
+  "linkedin",
+  "tiktok",
+  "facebook",
+  "website",
+  "other",
+] as const;
+export type LinkPlatform = (typeof LINK_PLATFORMS)[number];

@@ -225,6 +225,30 @@ requested, and some corporate mail scanners burn a code by following the link
 first; "This One-Time PIN has already been used" means that happened, and
 requesting a new one works.
 
+**`fly deploy` finished but nothing is running.** A deploy updates the machine
+in place, and updating a machine whose desired state is "stopped" leaves it
+stopped. It pulls the image, sets up the volume and configures firecracker, then
+never launches the guest, so the deploy looks like it worked. The logs end at:
+
+```
+Configuring firecracker
+```
+
+with no `Starting init`, no `Mounting /dev/vdc at /data`, no entrypoint output.
+A machine that really booted shows all three within a second of that line.
+
+`fly machine status <id>` settles it: the event log will show `created` and
+`stopped` with no `start` between them, and `HostStatus: ok` because nothing
+failed. Start it by hand:
+
+```bash
+fly machine start <machine-id>
+```
+
+This bites after anything that stops the machine -- the trial timeout below, a
+manual `fly machine stop`, an out-of-memory kill. Redeploying does not undo it;
+only starting it does.
+
 **Error 1033, "Cloudflare Tunnel error".** Cloudflare has the hostname and
 knows it is a tunnel, but no cloudflared is connected to serve it. The machine
 is not running. Check `fly logs` and `fly status`; `fly machine start` brings it

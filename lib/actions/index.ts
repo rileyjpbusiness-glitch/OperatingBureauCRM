@@ -75,6 +75,39 @@ export async function updateDealAction(input: unknown): Promise<void> {
   refresh();
 }
 
+/**
+ * Everything the import modal needs before it can show you anything: the stages
+ * it can drop leads into, read from the same place the board reads them, and
+ * every Instagram URL already on the board so the preview can flag a lead you
+ * already have.
+ */
+export async function importContextAction(): Promise<{
+  pipelines: {
+    id: string;
+    name: string;
+    slug: string;
+    stages: { id: string; name: string }[];
+  }[];
+  existingInstagram: string[];
+}> {
+  const pipelines = await repo.listPipelines();
+  const withStages = await Promise.all(
+    pipelines.map(async (pipeline) => ({
+      id: pipeline.id,
+      name: pipeline.name,
+      slug: pipeline.slug,
+      stages: (await repo.listStages(pipeline.id)).map((stage) => ({
+        id: stage.id,
+        name: stage.name,
+      })),
+    })),
+  );
+  return {
+    pipelines: withStages,
+    existingInstagram: [...(await repo.existingInstagramUrls())],
+  };
+}
+
 const addLinkSchema = z.object({
   contactId: z.string().min(1),
   platform: z.enum(LINK_PLATFORMS).optional(),

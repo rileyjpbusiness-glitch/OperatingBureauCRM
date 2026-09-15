@@ -70,6 +70,8 @@
   --ruler-break: 24px;
   --icon-size: 13px;
   --dialog-width: 420px;
+  /* The import modal carries a preview table, so it is wider than a form. */
+  --import-dialog-width: 720px;
   --panel-width: 520px;
   --card-gap: 8px;
 }

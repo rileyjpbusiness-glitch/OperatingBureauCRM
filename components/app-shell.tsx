@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 
 import { OWNERS, type Owner } from "@/lib/db/enums";
 import type { DealCard, Pipeline } from "@/lib/repo/types";
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 import { SearchBox } from "./search-box";
+import { ImportDialog } from "./import/import-dialog";
 import { BinButton } from "./bin/bin-button";
 import { BinSheet } from "./bin/bin-sheet";
 import { NewLeadDialog } from "./new-lead-dialog";
@@ -45,6 +46,7 @@ export function AppShell({
   const pathname = usePathname();
   const params = useSearchParams();
   const [adding, setAdding] = React.useState(false);
+  const [importing, setImporting] = React.useState(false);
 
   const owner = params.get("owner");
   const statsOn = params.get("stats") === "1";
@@ -158,6 +160,16 @@ export function AppShell({
         </button>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setImporting(true)}
+            title="Import leads"
+            aria-label="Import leads"
+            className="motion-fast rounded-control text-text-3 hover:text-text-1 flex size-6 shrink-0 items-center justify-center outline-none"
+          >
+            <Upload strokeWidth={1} className="size-[var(--icon-size)]" />
+          </button>
+
           {/* The slot is positioned so the board can portal its drop target
               over this button without disturbing the row. */}
           <div id="bin-drop-slot" className="relative flex items-center">
@@ -178,6 +190,8 @@ export function AppShell({
       <main className="min-h-0 flex-1">{children}</main>
 
       <BinSheet open={binOpen} binned={binned} />
+
+      <ImportDialog open={importing} onOpenChange={setImporting} />
 
       {newLeadTarget ? (
         <NewLeadDialog

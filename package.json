@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check": "tsx scripts/check.ts",
+    "check:dockerfile": "python3 scripts/check-dockerfile.py",
     "seed": "tsx scripts/seed.ts",
     "bootstrap": "tsx scripts/bootstrap.ts",
     "db:generate": "drizzle-kit generate",

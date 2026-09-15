@@ -99,6 +99,16 @@ Quote it. The token contains characters your shell would otherwise interpret.
 
 ## 6. Fly: deploy *(needs your Fly login)*
 
+If you have touched the Dockerfile, `.dockerignore`, or the set of files the
+image needs, run this first. It resolves every COPY source rather than reading
+the file, and it is faster to run than a failed build is to watch:
+
+```bash
+npm run check:dockerfile
+```
+
+Then:
+
 ```bash
 fly deploy
 ```
@@ -180,6 +190,14 @@ thin cover for the only copy of your pipeline.
 ever find more than one.
 
 ## Things that will bite
+
+**A build fails at a COPY with "not found".** Run `npm run check:dockerfile`.
+It checks context paths against `git ls-files` rather than the filesystem,
+which is the case that bites: an empty directory exists on your machine, git
+cannot track an empty directory, so it is absent from every fresh clone and the
+COPY fails only in the build. The check also resolves each `--from=<stage>`
+source back to the instruction in that stage that creates it, so a dropped or
+reordered instruction shows up as a failing row.
 
 **A mutation fails with "Invalid Server Actions request".** The public hostname
 is listed in `next.config.ts` under `serverActions.allowedOrigins`. If the

@@ -26,6 +26,7 @@ Other scripts:
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 | `npm run check` | Behavioural checks of the repo layer, against a temp database |
+| `npm run check:dockerfile` | Resolves every COPY source in the Dockerfile; run it before pushing a change to that file |
 | `npm run db:generate` | Generates a migration from changes to the schema |
 | `npm run db:migrate` | Applies pending migrations |
 | `npm run db:inspect` | Prints both boards with their stage metrics |
